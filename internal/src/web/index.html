@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CosyVoice 语音克隆</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 100px;
+            transition: border-color 0.3s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+        }
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #388e3c;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .audio-player {
+            width: 100%;
+            margin: 15px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .status-info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .status-success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        .status-error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .voice-category {
+            margin-bottom: 15px;
+        }
+        .voice-category-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+            padding-left: 5px;
+            border-left: 3px solid #667eea;
+        }
+        .voice-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        .voice-item {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .voice-item:hover {
+            border-color: #667eea;
+            background: #f5f5f5;
+        }
+        .voice-item.selected {
+            border-color: #667eea;
+            background: #e8eaf6;
+        }
+        .voice-item.cloned {
+            border-color: #4caf50;
+            background: #e8f5e9;
+        }
+        .voice-item.cloned.selected {
+            border-color: #2e7d32;
+            background: #c8e6c9;
+        }
+        .voice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .voice-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+        .voice-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .voice-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        .badge-cloned {
+            background: #4caf50;
+            color: white;
+        }
+        .btn-play {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        .btn-play:hover {
+            background: rgba(0,0,0,0.1);
+        }
+        .saved-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .saved-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .saved-item:last-child {
+            border-bottom: none;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.active {
+            display: block;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 CosyVoice 语音克隆</h1>
+        
+        <!-- Voice Selection -->
+        <div class="card">
+            <div class="card-title">1. 选择音色</div>
+            <div class="voice-list" id="voiceList">
+                <!-- Voices will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Text Input -->
+        <div class="card">
+            <div class="card-title">2. 输入文本</div>
+            <div class="form-group">
+                <label for="textInput">要合成的文本：</label>
+                <textarea id="textInput" placeholder="请输入要转换为语音的文本...">你好，我是你的朋友，最近怎么样？</textarea>
+            </div>
+            <div class="form-group">
+                <label for="promptText">提示文本（可选）：</label>
+                <input type="text" id="promptText" value="希望你以后能够做的比我还好呦。" style="width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;">
+            </div>
+        </div>
+        
+        <!-- Generate -->
+        <div class="card">
+            <div class="card-title">3. 生成语音</div>
+            <button class="btn btn-primary" id="generateBtn" onclick="generateSpeech()">
+                生成语音
+            </button>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在生成语音，请稍候...</p>
+            </div>
+            <div id="status"></div>
+        </div>
+        
+        <!-- Audio Player -->
+        <div class="card" id="playerCard" style="display:none;">
+            <div class="card-title">4. 试听与保存</div>
+            <audio id="audioPlayer" class="audio-player" controls></audio>
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="saveAudio()">
+                    保存语音
+                </button>
+                <button class="btn btn-primary" onclick="generateSpeech()">
+                    重新生成
+                </button>
+            </div>
+        </div>
+        
+        <!-- Saved Files -->
+        <div class="card">
+            <div class="card-title">已保存的语音</div>
+            <div class="saved-list" id="savedList">
+                <p style="color:#666;">暂无保存的语音</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedVoice = null;
+        let currentFilename = null;
+
+        // Load voices on page load
+        window.onload = function() {
+            loadVoices();
+            loadSaved();
+        };
+
+        // Load available voices
+        async function loadVoices() {
+            try {
+                const response = await fetch('/api/voices');
+                const data = await response.json();
+                
+                const voiceList = document.getElementById('voiceList');
+                voiceList.innerHTML = '';
+                
+                // Group voices by category
+                const categories = {};
+                data.voices.forEach(voice => {
+                    const cat = voice.category || '其他';
+                    if (!categories[cat]) categories[cat] = [];
+                    categories[cat].push(voice);
+                });
+                
+                // Render each category
+                for (const [category, voices] of Object.entries(categories)) {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'voice-category';
+                    
+                    const titleDiv = document.createElement('div');
+                    titleDiv.className = 'voice-category-title';
+                    titleDiv.textContent = category;
+                    categoryDiv.appendChild(titleDiv);
+                    
+                    const gridDiv = document.createElement('div');
+                    gridDiv.className = 'voice-list';
+                    
+                    voices.forEach(voice => {
+                        const div = document.createElement('div');
+                        const isCloned = voice.category === '克隆音色';
+                        div.className = `voice-item ${isCloned ? 'cloned' : ''}`;
+                        
+                        const badge = isCloned ? '<span class="voice-badge badge-cloned">克隆</span>' : '';
+                        const playBtn = `<button class="btn-play" onclick="event.stopPropagation(); playVoice('${voice.category}', '${voice.name.replace(/'/g, "\\'")}')" title="试听">▶️</button>`;
+                        
+                        div.innerHTML = `
+                            <div class="voice-header">
+                                <div class="voice-name">${voice.name}${badge}</div>
+                                ${playBtn}
+                            </div>
+                            <div class="voice-info">${voice.duration}秒 | ${(voice.size/1024).toFixed(1)}KB</div>
+                        `;
+                        div.onclick = () => selectVoice(voice.id, div);
+                        gridDiv.appendChild(div);
+                    });
+                    
+                    categoryDiv.appendChild(gridDiv);
+                    voiceList.appendChild(categoryDiv);
+                }
+                
+                // Select first voice by default
+                if (data.voices.length > 0) {
+                    const firstItem = voiceList.querySelector('.voice-item');
+                    if (firstItem) {
+                        selectVoice(data.voices[0].id, firstItem);
+                    }
+                }
+            } catch (error) {
+                showStatus('加载音色失败: ' + error.message, 'error');
+            }
+        }
+
+        // Select a voice
+        function selectVoice(voiceId, element) {
+            selectedVoice = voiceId;
+            
+            // Update UI
+            document.querySelectorAll('.voice-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            element.classList.add('selected');
+        }
+
+        // Generate speech
+        async function generateSpeech() {
+            if (!selectedVoice) {
+                showStatus('请先选择一个音色', 'error');
+                return;
+            }
+            
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                showStatus('请输入要合成的文本', 'error');
+                return;
+            }
+            
+            const promptText = document.getElementById('promptText').value.trim();
+            
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('playerCard').style.display = 'none';
+            showStatus('正在生成语音...', 'info');
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        voice_id: selectedVoice,
+                        prompt_text: promptText
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentFilename = data.filename;
+                    
+                    // Play audio
+                    const audioPlayer = document.getElementById('audioPlayer');
+                    audioPlayer.src = data.url;
+                    document.getElementById('playerCard').style.display = 'block';
+                    
+                    showStatus(`生成成功！时长: ${data.duration}秒`, 'success');
+                } else {
+                    showStatus('生成失败: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showStatus('生成失败: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+
+        // Save audio
+        async function saveAudio() {
+            if (!currentFilename) {
+                showStatus('没有可保存的语音', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/save/${currentFilename}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('语音已保存！', 'success');
+                    loadSaved();
+                } else {
+                    showStatus('保存失败', 'error');
+                }
+            } catch (error) {
+                showStatus('保存失败: ' + error.message, 'error');
+            }
+        }
+
+        // Load saved files
+        async function loadSaved() {
+            try {
+                const response = await fetch('/api/saved');
+                const data = await response.json();
+                
+                const savedList = document.getElementById('savedList');
+                
+                if (data.files.length === 0) {
+                    savedList.innerHTML = '<p style="color:#666;">暂无保存的语音</p>';
+                    return;
+                }
+                
+                savedList.innerHTML = '';
+                data.files.forEach(file => {
+                    const div = document.createElement('div');
+                    div.className = 'saved-item';
+                    div.innerHTML = `
+                        <div>
+                            <strong>${file.filename.substring(0, 12)}...</strong>
+                            <div style="font-size:12px;color:#666;">${file.time}</div>
+                        </div>
+                        <audio controls src="/api/audio/${file.filename}" style="height:30px;"></audio>
+                    `;
+                    savedList.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Load saved failed:', error);
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.className = `status status-${type}`;
+            status.textContent = message;
+        }
+
+        // Play voice file directly
+        function playVoice(category, filename) {
+            const voiceId = `${category}:${filename}`;
+            const url = `/api/voice/${encodeURIComponent(voiceId)}`;
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.src = url;
+            document.getElementById('playerCard').style.display = 'block';
+            audioPlayer.play();
+            showStatus(`正在播放: ${filename}`, 'info');
+        }
+    </script>
+</body>
+</html>

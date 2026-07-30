@@ -1,0 +1,58 @@
+# ============================================================
+# Privacy & sensitive data — NEVER commit
+# ============================================================
+# All private/user data lives here (chat logs, decrypted DBs, voices, reports)
+private/
+# Local secrets (SQLCipher key, active QQ, display names)
+.env
+
+# ============================================================
+# Legacy / archived scripts (kept locally, not published)
+# ============================================================
+internal/src/_legacy/
+
+# ============================================================
+# Large / generated artifacts
+# ============================================================
+# Python virtual environment (~large, do not recreate)
+internal/env/
+# CosyVoice pretrained models (downloaded separately)
+internal/src/CosyVoice/pretrained_models/
+
+# ============================================================
+# Fallback guards for original data locations (pre-migration)
+# ============================================================
+internal/decrypted/
+internal/Registry2.0.db
+internal/Registry2.0.db-journal
+voices/
+**/knowledge-base/
+companion-agent/SystemPrompt.txt
+style-analysis/
+cleaning_report.txt
+data_quality_check.txt
+reports/analysis_*.html
+reports/summary_report.html
+reports/README.md
+reports/SUMMARY.md
+
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ============================================================
+# Audio intermediates
+# ============================================================
+*.pcm
+
+# ============================================================
+# OS / editor
+# ============================================================
+Thumbs.db
+Desktop.ini
+.DS_Store
+.workbuddy/

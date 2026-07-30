@@ -1,0 +1,14 @@
+# Core runtime dependencies (installed in internal/env/voice-clone-env).
+# Pinning is intentionally loose; the venv already contains the exact versions.
+PyYAML>=6.0
+python-dotenv>=1.0
+fastapi
+uvicorn
+pydantic
+numpy
+scipy
+soundfile
+torch
+# SQLCipher access for DB decryption
+sqlcipher3
+# CosyVoice model dependencies are vendored under internal/src/CosyVoice

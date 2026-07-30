@@ -1,0 +1,52 @@
+# ============================================================
+# Voice project configuration (non-sensitive defaults)
+# Sensitive values (QQ number, SQLCipher key, names) live in .env
+# All paths are relative to the project root unless absolute.
+# ============================================================
+
+paths:
+  # Root for all private/user data (gitignored)
+  private_root: "private"
+
+  # Vendored CosyVoice repository and pretrained model
+  cosyvoice_repo: "internal/src/CosyVoice"
+  model_dir: "internal/src/CosyVoice/pretrained_models/CosyVoice-300M"
+
+  # External tool binaries (Windows)
+  tools:
+    silk_decoder: "internal/src/tools/silk_v3_decoder.exe"
+    lame: "internal/src/tools/lame.exe"
+    silk2mp3: "internal/src/tools/silk2mp3.exe"
+
+  # Per-user data layout, relative to private_root.
+  # "{qq}" is substituted with the active user's QQ number at runtime.
+  user_subdirs:
+    raw: "users/{qq}/raw"
+    decrypted: "users/{qq}/decrypted"
+    voices_silk: "users/{qq}/voices/silk"
+    voices_wav: "users/{qq}/voices/wav"
+    voices_cloned: "users/{qq}/voices/cloned"
+    reports: "users/{qq}/reports"
+
+  # Shared (non per-user) outputs, relative to private_root.
+  shared:
+    web_output: "shared/web_output"
+    saved: "shared/saved"
+
+  # QQ chat_log.json inside a user's decrypted dir
+  chat_log_name: "chat_log.json"
+
+audio:
+  # Output sample rate for decoded SILK / synthesized speech
+  sample_rate: 24000
+  # Minimum acceptable source sample rate for CosyVoice reference audio
+  target_sr: 16000
+
+tts:
+  # Default prompt text used for zero-shot cloning
+  default_prompt_text: "希望你以后能够做的比我还好呦。"
+
+web:
+  host: "0.0.0.0"
+  port: 8000
+  index_html: "internal/src/web/index.html"
