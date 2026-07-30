@@ -56,11 +56,27 @@ QQ voice messages are SILK v3:
 ```
 .venv\Scripts\python.exe internal/src/web/app.py
 ```
-Serves FastAPI on the host/port from `config/config.yaml`. Frontend is a single `index.html`.
+Serves FastAPI on the host/port from `config/config.yaml`. Frontend is multiple
+standalone pages under `internal/src/web/` (index/manage/pipeline/models/companion),
+each with inline JS, sharing `/static/studio.css`. No build step.
+
+- Optional access-token auth via middleware; localhost-only by default. New same-origin
+  pages are protected automatically.
+- `/companion` + `POST /api/chat` do roleplay chat (DashScope Qwen via `voicekit.llm`);
+  replies are turned to cloned voice through `/api/generate`.
+- `POST /api/generate/stream` returns a streaming `audio/wav`.
+
+## Tests & CI
+
+- `pytest` suite in `tests/`; config in `pyproject.toml` (ruff select E/F/W, line-length 100,
+  excludes vendored CosyVoice/.venv). Run: `.venv\Scripts\python.exe -m pytest` and
+  `.venv\Scripts\python.exe -m ruff check .`.
+- `.github/workflows/ci.yml` installs ONLY light deps (pytest/ruff/PyYAML/python-dotenv).
+  So committed tests must depend only on stdlib + yaml/dotenv (pure logic, no GPU/network);
+  heavy deps (torch/fastapi/numpy/soundfile/dashscope) must be lazy-imported inside functions.
 
 ## Notes
 
 - All UI text and reports are in Chinese.
-- No tests, no lint config, no build system — scripts are run directly.
 - `.venv/` (repo root) is a ~large venv; do not delete or recreate it.
 - PowerShell: use `;` not `&&` as a statement separator.

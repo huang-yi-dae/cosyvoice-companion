@@ -14,7 +14,7 @@
 | --- | --- | --- | --- | --- |
 | 1 | **自动化测试** | 项目自身当前**零测试**。补 `pytest` 冒烟/单元用例：`config` 加载与路径解析、`TTSProvider` 抽象、`clean`/`export_msgs` 纯逻辑、`dashscope_tts` 缺 Key 报错。目标先覆盖不依赖 GPU/网络的纯逻辑。 | 🔴 | ✅ |
 | 2 | **CI 流水线** | 加 `.github/workflows/ci.yml`：`ruff` lint + `pytest`（仅跑纯逻辑用例）。注意排除 vendored `internal/src/CosyVoice/`。 | 🔴 | ✅ |
-| 3 | **拆分 app.py** | `web/app.py` 已 754 行，混合工作室/云端/流水线/模型/用户逻辑。按 FastAPI `APIRouter` 拆为 `routers/{studio,cloud,pipeline,models,users}.py`，`app.py` 只做装配。 | 🟡 | ⬜ |
+| 3 | **拆分 app.py** | `web/app.py` 已 767 行，混合工作室/云端/流水线/模型/用户/对话逻辑。按 FastAPI `APIRouter` 拆为 `routers/{studio,cloud,pipeline,models,users}.py`，`app.py` 只做装配。 | 🟡 | ⬜ |
 | 4 | **结构化日志** | 现多处用 `print()`。引入 `logging`（分级、可写文件），Web 端把模型加载/合成耗时、失败原因统一记录，便于排查首次加载慢等问题。 | 🟡 | ⬜ |
 | 5 | **配置校验** | 用 `pydantic-settings` 对 `.env` / `config.yaml` 做启动期校验，缺失关键项时给出明确报错而非运行时崩溃。 | 🟢 | ⬜ |
 | 6 | **前端 JS 抽离** | `index.html` 等为内联 JS 单文件（~500 行）。可抽到 `static/*.js` 模块，减少重复（多页共用 `/api/config`、用户切换逻辑）。 | 🟢 | ⬜ |

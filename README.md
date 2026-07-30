@@ -74,7 +74,7 @@ $py = ".venv/Scripts/python.exe"
 
 访问 http://localhost:8000 （host/port 可在 `config/config.yaml` 调整）。
 
-页面导航：**工作室**（合成）・**管理台**（数据）・**自动化**（流水线）・**模型**（下载管理）。
+页面导航：**工作室**（合成）・**管理台**（数据）・**自动化**（流水线）・**模型**（下载管理）・**陪伴**（角色对话）。
 
 ### 合成语言选择
 
@@ -97,6 +97,16 @@ $py = ".venv/Scripts/python.exe"
 
 模型目录下载到 `paths.models_root`（`internal/src/CosyVoice/pretrained_models`）下。
 候选清单与估算网速在 `config/config.yaml` 的 `models`（`catalog` / `est_speed_mbps`）中配置。
+
+### 陪伴对话（/models 同级页面 /companion）
+
+打开 http://localhost:8000/companion 与用生成的角色人设（`SystemPrompt.txt`）对话：
+
+- 后端 `POST /api/chat` 调用阿里云百炼 / DashScope 的 Qwen（`config/config.yaml` 的 `llm`，
+  默认 `qwen-plus`，`max_turns` 控制携带的历史轮数），以该用户人设做角色扮演；
+- 勾选「朗读回复」后，回复文本会自动经 `/api/generate` 转成克隆人声播放；
+- 需在 `.env` 配置 `DASHSCOPE_API_KEY`；对话历史由前端持有，后端无状态。
+- 知识库向量检索（让回答更贴合真实聊天事实）见 `ROADMAP.md` #20，尚未接入。
 
 ## 全流程自动化（解密 → 克隆）
 
