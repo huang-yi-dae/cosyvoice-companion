@@ -261,6 +261,11 @@ class Config:
                 return lang.get("tag", "") or ""
         return ""
 
+    # ---- llm (roleplay chat) --------------------------------------------
+    def llm_cfg(self) -> Dict[str, Any]:
+        """Config block for the roleplay chat LLM (``llm:`` in YAML; may be empty)."""
+        return self.raw.get("llm", {}) or {}
+
     @property
     def web(self) -> Dict[str, Any]:
         return self.raw["web"]
@@ -280,6 +285,10 @@ class Config:
     @property
     def models_html(self) -> Path:
         return self.abspath(self.raw["web"]["models_html"])
+
+    @property
+    def companion_html(self) -> Path:
+        return self.abspath(self.raw["web"]["companion_html"])
 
     @property
     def static_dir(self) -> Path:

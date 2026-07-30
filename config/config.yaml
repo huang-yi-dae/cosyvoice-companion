@@ -156,4 +156,14 @@ web:
   manage_html: "internal/src/web/manage.html"
   pipeline_html: "internal/src/web/pipeline.html"
   models_html: "internal/src/web/models.html"
+  companion_html: "internal/src/web/companion.html"
   static_dir: "internal/src/web/static"
+
+# Roleplay chat LLM for the companion page (#19). Uses Aliyun Bailian / DashScope
+# (same DASHSCOPE_API_KEY as cloud TTS). The persona SystemPrompt + chat history
+# are sent to the model; the reply is then voiced by the TTS provider.
+llm:
+  # DashScope chat model. qwen-plus is a good default; qwen-turbo is cheaper.
+  model: qwen-plus
+  # How many past user/assistant pairs to keep as context per request.
+  max_turns: 6

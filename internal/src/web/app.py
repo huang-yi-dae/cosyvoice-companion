@@ -30,6 +30,7 @@ from voicekit import load_config
 from voicekit.audio import concat_wavs
 from voicekit.cosyvoice_engine import CosyVoiceEngine
 from voicekit.dashscope_tts import DashScopeTTSProvider
+from voicekit.llm import LLMClient
 from voicekit.wavstream import wav_stream
 
 # ---- configuration -----------------------------------------------------------
@@ -129,6 +130,22 @@ def get_dashscope_provider() -> DashScopeTTSProvider:
             oss=dcfg.get("oss", {}),
         )
     return _dashscope_provider["p"]
+
+
+# ---- roleplay chat LLM cache -------------------------------------------------
+_llm_client: dict = {}
+
+
+def get_llm_client() -> LLMClient:
+    """Return a cached roleplay chat client (raises if API key missing)."""
+    if "c" not in _llm_client:
+        lcfg = cfg.llm_cfg()
+        _llm_client["c"] = LLMClient(
+            api_key=cfg.dashscope_api_key,
+            model=lcfg.get("model") or "qwen-plus",
+            max_turns=int(lcfg.get("max_turns", 6)),
+        )
+    return _llm_client["c"]
 
 
 def providers_info() -> dict:
@@ -351,6 +368,17 @@ class KnowledgePaths(BaseModel):
     paths: List[str]
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    qq: Optional[str] = None
+    history: List[ChatMessage] = []
+
+
 # ---- pages -------------------------------------------------------------------
 @app.get("/")
 async def root():
@@ -370,6 +398,11 @@ async def pipeline_page():
 @app.get("/models")
 async def models_page():
     return FileResponse(str(cfg.models_html))
+
+
+@app.get("/companion")
+async def companion_page():
+    return FileResponse(str(cfg.companion_html))
 
 
 # ---- config / users / models -------------------------------------------------
@@ -680,6 +713,34 @@ async def api_regen_prompt(qq: str):
     state.setdefault("prompts", {})[str(qq)] = content
     save_state(state)
     return {"success": True, "content": content, "source": "regenerated"}
+
+
+# ---- companion chat (roleplay LLM -> text; front end voices it via /api/generate)
+@app.post("/api/chat")
+def companion_chat(request: ChatRequest):
+    """Roleplay one turn: persona SystemPrompt + history + message -> reply text.
+
+    The reply is returned as text; the companion page then sends it to
+    ``/api/generate`` (or ``/api/generate/stream``) to voice it in the cloned
+    voice. Conversation history is supplied by the client (stateless backend).
+    """
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="消息不能为空")
+
+    found = existing_prompt(request.qq) if request.qq else existing_prompt(cfg.active_qq or "")
+    system_prompt = found["content"] if found else default_prompt(request.qq or "")
+    source = found["source"] if found else "default"
+
+    history = [{"role": m.role, "content": m.content} for m in request.history]
+    try:
+        client = get_llm_client()
+        reply = client.chat(system_prompt, history, request.message)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:  # noqa: BLE001 — surface chat errors to the client
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"reply": reply, "prompt_source": source, "model": client.name}
 
 
 @app.get("/api/knowledge-paths")
