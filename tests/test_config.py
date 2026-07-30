@@ -82,6 +82,27 @@ def test_abspath_absolute_is_unchanged(minimal_raw, tmp_path):
     assert cfg.abspath(str(tmp_path)) == tmp_path
 
 
+# ---- web access token ----------------------------------------------------
+def test_web_auth_token_none_by_default(minimal_raw, monkeypatch):
+    monkeypatch.delenv("WEB_AUTH_TOKEN", raising=False)
+    # No web block at all -> None.
+    assert _cfg(minimal_raw).web_auth_token() is None
+
+
+def test_web_auth_token_from_yaml(minimal_raw, monkeypatch):
+    monkeypatch.delenv("WEB_AUTH_TOKEN", raising=False)
+    raw = dict(minimal_raw)
+    raw["web"] = {"auth_token": "yaml-secret"}
+    assert _cfg(raw).web_auth_token() == "yaml-secret"
+
+
+def test_web_auth_token_env_overrides_yaml(minimal_raw, monkeypatch):
+    monkeypatch.setenv("WEB_AUTH_TOKEN", "env-secret")
+    raw = dict(minimal_raw)
+    raw["web"] = {"auth_token": "yaml-secret"}
+    assert _cfg(raw).web_auth_token() == "env-secret"
+
+
 # ---- integration: the real config.yaml loads and resolves ---------------
 def test_load_config_real_yaml_smoke():
     """The shipped config.yaml must load and expose sane provider defaults."""

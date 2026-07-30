@@ -10,6 +10,7 @@ import re
 import sys
 import json
 import uuid
+import hmac
 import shutil
 import threading
 from pathlib import Path
@@ -19,10 +20,11 @@ from typing import List, Optional
 # internal/src/web/app.py -> add internal/src for the voicekit package
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from voicekit import load_config
 from voicekit.audio import concat_wavs
@@ -39,6 +41,54 @@ OUTPUT_DIR = cfg.shared_path("web_output", create=True)
 SAVED_DIR = cfg.shared_path("saved", create=True)
 
 app = FastAPI(title="CosyVoice Studio")
+
+# ---- optional access-token auth ---------------------------------------------
+# When WEB_AUTH_TOKEN (.env) or web.auth_token (yaml) is set, every request must
+# present the token via one of: ``?token=`` (persisted to a cookie on success),
+# ``Authorization: Bearer <token>`` header, or the ``access_token`` cookie.
+# When unset, no auth is enforced and the server should bind to localhost only.
+_AUTH_TOKEN = cfg.web_auth_token()
+
+_LOGIN_HTML = (
+    "<!doctype html><meta charset=utf-8><title>需要访问令牌</title>"
+    "<div style='max-width:320px;margin:18vh auto;font-family:sans-serif'>"
+    "<h3>请输入访问令牌</h3>"
+    "<form onsubmit=\"location.search='?token='+encodeURIComponent(t.value);return false\">"
+    "<input id=t type=password style='width:100%;padding:8px' placeholder='访问令牌'>"
+    "<button style='margin-top:8px;padding:8px 16px'>进入</button></form></div>"
+)
+
+
+def _token_ok(request: Request) -> bool:
+    supplied = request.query_params.get("token")
+    if not supplied:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            supplied = auth[7:]
+    if not supplied:
+        supplied = request.cookies.get("access_token")
+    return bool(supplied) and hmac.compare_digest(supplied, _AUTH_TOKEN)
+
+
+class TokenAuthMiddleware(BaseHTTPMiddleware):
+    """Gate every request behind the configured access token (if any)."""
+
+    async def dispatch(self, request: Request, call_next):
+        if not _AUTH_TOKEN:
+            return await call_next(request)
+        if not _token_ok(request):
+            if request.url.path.startswith("/api/"):
+                return JSONResponse({"detail": "未授权：需要有效访问令牌"}, status_code=401)
+            return HTMLResponse(_LOGIN_HTML, status_code=401)
+        response = await call_next(request)
+        # First-time ?token= login: persist to a cookie so links keep working.
+        if request.query_params.get("token"):
+            response.set_cookie("access_token", _AUTH_TOKEN, httponly=True, samesite="lax")
+        return response
+
+
+if _AUTH_TOKEN:
+    app.add_middleware(TokenAuthMiddleware)
 
 if cfg.static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(cfg.static_dir)), name="static")
@@ -750,4 +800,12 @@ async def api_models_download_status():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host=cfg.web["host"], port=int(cfg.web["port"]))
+    host = cfg.web["host"]
+    if host not in ("127.0.0.1", "localhost") and not _AUTH_TOKEN:
+        print(
+            "\n[安全警告] 当前绑定到 "
+            f"{host}（对局域网开放）但未设置访问令牌。"
+            "\n         任何同网设备均可触发解密/合成等敏感操作。"
+            "\n         请在 .env 设置 WEB_AUTH_TOKEN，或将 web.host 改为 127.0.0.1。\n"
+        )
+    uvicorn.run(app, host=host, port=int(cfg.web["port"]))

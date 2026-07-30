@@ -285,6 +285,19 @@ class Config:
     def static_dir(self) -> Path:
         return self.abspath(self.raw["web"]["static_dir"])
 
+    def web_auth_token(self) -> Optional[str]:
+        """Optional access token guarding the web UI.
+
+        ``WEB_AUTH_TOKEN`` in ``.env`` takes precedence over ``web.auth_token``
+        in the YAML. When ``None``/empty, no auth is enforced and the server is
+        expected to bind to localhost only (see ``config.yaml`` ``web.host``).
+        """
+        tok = os.getenv("WEB_AUTH_TOKEN")
+        if tok:
+            return tok
+        tok = self.raw.get("web", {}).get("auth_token")
+        return str(tok) if tok else None
+
     @property
     def chat_log_name(self) -> str:
         return self.raw["paths"].get("chat_log_name", "chat_log.json")

@@ -144,8 +144,14 @@ models:
       description: "CosyVoice 2.0，音质与稳定性更高，体积较大（需完整下载 CosyVoice-BlankEN 与 speech_tokenizer_v2.onnx）。"
 
 web:
-  host: "0.0.0.0"
+  # Bind to localhost by default (safe). Only expose on the LAN (0.0.0.0) if
+  # you ALSO set an access token (WEB_AUTH_TOKEN in .env or web.auth_token below),
+  # otherwise anyone on the network could trigger decryption / synthesis.
+  host: "127.0.0.1"
   port: 8000
+  # Optional access token. Leave empty to disable auth (localhost-only use).
+  # Prefer setting WEB_AUTH_TOKEN in .env instead of committing a token here.
+  auth_token: ""
   index_html: "internal/src/web/index.html"
   manage_html: "internal/src/web/manage.html"
   pipeline_html: "internal/src/web/pipeline.html"
