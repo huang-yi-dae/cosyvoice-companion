@@ -17,3 +17,6 @@ modelscope
 # needed for the cloud synthesis path; local cloning works without it.
 dashscope
 # CosyVoice model dependencies are vendored under internal/src/CosyVoice
+
+# --- Test / dev tooling (not needed at runtime) ---
+pytest>=8.0

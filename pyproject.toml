@@ -1,0 +1,20 @@
+[tool.pytest.ini_options]
+# Only collect the project's own tests; never descend into the vendored
+# CosyVoice tree (it ships its own unrelated test files).
+testpaths = ["tests"]
+addopts = "-ra -q"
+norecursedirs = ["internal/src/CosyVoice", ".venv", "internal/env"]
+
+[tool.ruff]
+# Lint only first-party code; vendored CosyVoice and virtualenvs are excluded.
+extend-exclude = [
+    "internal/src/CosyVoice",
+    "internal/env",
+    ".venv",
+]
+line-length = 100
+
+[tool.ruff.lint]
+# Conservative default rule set for a research project: pyflakes + pycodestyle.
+select = ["E", "F", "W"]
+ignore = ["E501"]
