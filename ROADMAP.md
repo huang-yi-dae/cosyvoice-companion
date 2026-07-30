@@ -37,7 +37,7 @@
 
 | # | 方向 | 说明 | 优先级 | 状态 |
 | --- | --- | --- | --- | --- |
-| 12 | **流式合成** | 本地 `zero_shot(stream=True)` 与 DashScope 流式接口均支持。前端改为边合成边播放，显著降低长文本首包延迟。 | 🔴 | ⬜ |
+| 12 | **流式合成** | 后端已加 `POST /api/generate/stream`（本地边合成边推 PCM、云端合成后透传），返回 `audio/wav` 流。前端渐进播放（MSE/分块）待后续接入。 | 🔴 | 🚧 |
 | 13 | **长文本分段** | 超长文本自动按句/标点切分、逐段合成再拼接（复用 `audio.concat_wavs`），避免单次请求超限或音质劣化。 | 🟡 | ⬜ |
 | 14 | **云端在线复刻 UI** | 后端 `dashscope_tts.create_voice` 已就绪，但缺 OSS 上传闭环（云端复刻只接受公网 URL）。补 OSS 上传 + 前端「上传样本→创建音色→轮询 OK→可用」向导。 | 🟡 | ⬜ |
 | 15 | **多 Provider 扩展** | `TTSProvider` 抽象已就位，可低成本接入更多引擎：火山/MiniMax 等云端，或 GPT-SoVITS/Fish-Speech 等本地。做成 provider 注册表 + 配置即插拔。 | 🟢 | ⬜ |

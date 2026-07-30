@@ -21,7 +21,7 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -30,6 +30,7 @@ from voicekit import load_config
 from voicekit.audio import concat_wavs
 from voicekit.cosyvoice_engine import CosyVoiceEngine
 from voicekit.dashscope_tts import DashScopeTTSProvider
+from voicekit.wavstream import wav_stream
 
 # ---- configuration -----------------------------------------------------------
 cfg = load_config()
@@ -541,6 +542,80 @@ def generate_speech(request: TTSRequest):
             "language": request.language or "auto",
             "samples_used": len(ref_paths),
         }
+    except Exception as e:  # noqa: BLE001 — surface synth errors to the client
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _resolve_reference(request: TTSRequest) -> Path:
+    """Resolve+combine the selected local voice samples into one reference WAV."""
+    if not request.voice_ids:
+        raise HTTPException(status_code=400, detail="请至少选择一个语音样本")
+    ref_paths = []
+    for vid in request.voice_ids:
+        p = resolve_voice_path(vid, request.qq)
+        if p.exists():
+            ref_paths.append(p)
+    if not ref_paths:
+        raise HTTPException(status_code=404, detail="所选语音样本不存在")
+    if len(ref_paths) == 1:
+        return ref_paths[0]
+    return concat_wavs(
+        ref_paths,
+        OUTPUT_DIR / f"ref_{uuid.uuid4().hex[:8]}.wav",
+        target_sr=cfg.target_sr,
+    )
+
+
+@app.post("/api/generate/stream")
+def generate_speech_stream(request: TTSRequest):
+    """Stream synthesized audio as ``audio/wav`` for progressive playback.
+
+    Local cloning streams PCM chunks from the model as they are produced (lower
+    time-to-first-audio). The cloud provider has no chunked API here, so it
+    synthesizes once and the finished WAV is streamed in a single pass.
+    """
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="文本不能为空")
+
+    provider_name = request.provider or cfg.tts_provider_default()
+
+    # ---- cloud: synthesize then stream the finished file --------------------
+    if provider_name == "dashscope":
+        if not request.voice:
+            raise HTTPException(status_code=400, detail="请选择一个云端音色")
+        try:
+            provider = get_dashscope_provider()
+            tmp = OUTPUT_DIR / f"{uuid.uuid4().hex[:8]}.wav"
+            provider.synthesize_to_file(
+                request.text, tmp, voice=request.voice, language=request.language,
+            )
+        except Exception as e:  # noqa: BLE001 — surface synth errors to the client
+            raise HTTPException(status_code=500, detail=str(e))
+
+        def _file_iter(path: Path, chunk: int = 32768):
+            with open(path, "rb") as f:
+                while True:
+                    block = f.read(chunk)
+                    if not block:
+                        break
+                    yield block
+
+        return StreamingResponse(_file_iter(tmp), media_type="audio/wav")
+
+    # ---- local: stream PCM chunks from the model as they arrive -------------
+    reference = _resolve_reference(request)
+    try:
+        engine = get_engine(request.model)
+        language_tag = cfg.language_tag(request.language)
+        pcm_chunks = engine.stream_pcm(
+            request.text, reference,
+            prompt_text=request.prompt_text, language_tag=language_tag,
+        )
+        return StreamingResponse(
+            wav_stream(pcm_chunks, engine.sample_rate), media_type="audio/wav",
+        )
+    except HTTPException:
+        raise
     except Exception as e:  # noqa: BLE001 — surface synth errors to the client
         raise HTTPException(status_code=500, detail=str(e))
 

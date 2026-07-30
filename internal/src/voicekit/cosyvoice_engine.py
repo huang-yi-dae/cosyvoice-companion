@@ -100,6 +100,29 @@ class CosyVoiceEngine(TTSProvider):
             text, prompt_text, str(reference_wav), stream=stream
         )
 
+    def stream_pcm(
+        self,
+        text: str,
+        reference_wav,
+        prompt_text: Optional[str] = None,
+        language_tag: str = "",
+    ) -> Iterator[bytes]:
+        """Yield little-endian PCM16 byte chunks as the model streams them.
+
+        Wraps :meth:`zero_shot` with ``stream=True`` and converts each returned
+        ``tts_speech`` tensor to raw PCM16 so the web layer can wrap it into a
+        streaming WAV (see :mod:`voicekit.wavstream`) for progressive playback.
+        """
+        import numpy as np
+
+        for result in self.zero_shot(
+            text, reference_wav, prompt_text, stream=True, language_tag=language_tag
+        ):
+            audio = result["tts_speech"].numpy().squeeze()
+            pcm = np.clip(audio, -1.0, 1.0)
+            pcm = (pcm * 32767.0).astype("<i2")
+            yield pcm.tobytes()
+
     def clone_to_file(
         self,
         text: str,
