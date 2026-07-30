@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CosyVoice Studio · 陪伴</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/studio.css" />
+  <style>
+    /* ── companion-specific components ────────────────────────── */
+    .cmp-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+    @media (max-width: 900px) { .cmp-layout { grid-template-columns: 1fr; } }
+
+    .cmp-controls .field-label { margin-top: 14px; }
+    .cmp-controls .field-label:first-child { margin-top: 0; }
+    .voice-list { max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px; background: var(--panel-2); }
+    .voice-list label { display: flex; align-items: center; gap: 8px; padding: 5px 6px; font-size: 0.78rem; color: var(--ink-dim); cursor: pointer; border-radius: 6px; }
+    .voice-list label:hover { background: var(--panel); }
+    .voice-list input { accent-color: var(--amber); }
+    .voice-list .empty { padding: 8px; }
+
+    .chat-window {
+      display: flex; flex-direction: column; height: calc(100vh - 260px); min-height: 420px;
+      border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+    }
+    .chat-scroll { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+    .bubble { max-width: 78%; padding: 10px 14px; border-radius: 14px; font-size: 0.86rem; line-height: 1.6; word-break: break-word; }
+    .bubble.me { align-self: flex-end; background: var(--amber); color: #1a1204; border-bottom-right-radius: 4px; }
+    .bubble.them { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink); border-bottom-left-radius: 4px; }
+    .bubble .bubble-audio { margin-top: 8px; display: block; width: 240px; max-width: 100%; }
+    .bubble .bubble-note { font-size: 0.68rem; color: var(--ink-faint); margin-top: 4px; }
+    .chat-empty { margin: auto; color: var(--ink-faint); font-size: 0.82rem; text-align: center; }
+
+    .chat-input-row { display: flex; gap: 10px; padding: 14px; border-top: 1px solid var(--line); }
+    .chat-input-row textarea {
+      flex: 1; resize: none; height: 46px; font-family: inherit; font-size: 0.88rem;
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+      color: var(--ink); padding: 12px 14px;
+    }
+    .chat-input-row textarea:focus { outline: none; border-color: var(--line-strong); }
+    .typing { align-self: flex-start; color: var(--ink-faint); font-size: 0.78rem; padding: 4px 6px; }
+  </style>
+</head>
+<body>
+  <!-- ── top bar ─────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      CosyVoice
+      <small>STUDIO / 陪伴</small>
+    </div>
+    <nav class="nav">
+      <a href="/">工作室</a>
+      <a href="/manage">管理台</a>
+      <a href="/pipeline">自动化</a>
+      <a href="/models">模型</a>
+      <a href="/companion" class="active">陪伴</a>
+    </nav>
+    <div class="spacer"></div>
+
+    <div class="userswitch" id="userswitch">
+      <button id="userBtn" onclick="toggleUserMenu()">
+        <span class="avatar" id="userAvatar">··</span>
+        <span class="mono" id="userLabel">加载中…</span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="usermenu" id="userMenu"></div>
+    </div>
+  </header>
+
+  <!-- ── main ───────────────────────────────────────────────── -->
+  <main class="wrap">
+    <div class="page-head">
+      <h1>与你在意的人<span class="em">对话</span>。</h1>
+      <p>用聊天记录学到的语气（SystemPrompt）驱动角色扮演对话，回复再用克隆音色朗读出来。文本对话走阿里云百炼（需在 .env 配置 DASHSCOPE_API_KEY），语音合成沿用工作室的本地 / 云端设置。</p>
+    </div>
+
+    <div class="cmp-layout">
+      <!-- 控制栏 -->
+      <section class="panel cmp-controls">
+        <label class="field-label" for="providerSelect">语音提供方</label>
+        <select id="providerSelect" onchange="onProviderChange()"></select>
+
+        <div id="localVoiceBox">
+          <label class="field-label">语音样本（可多选）</label>
+          <div class="voice-list" id="voiceList"><div class="empty">加载中…</div></div>
+        </div>
+
+        <div id="cloudVoiceBox" style="display:none">
+          <label class="field-label" for="cloudVoiceSelect">云端音色</label>
+          <select id="cloudVoiceSelect"></select>
+        </div>
+
+        <label class="field-label" for="langSelect">语言</label>
+        <select id="langSelect"></select>
+
+        <label class="field-label"><input type="checkbox" id="voiceToggle" checked style="accent-color:var(--amber)"> 朗读回复</label>
+
+        <div class="btn-row" style="margin-top:16px">
+          <button class="btn btn-ghost btn-sm" onclick="resetChat()">清空对话</button>
+        </div>
+      </section>
+
+      <!-- 聊天窗口 -->
+      <section class="chat-window">
+        <div class="chat-scroll" id="chatScroll">
+          <div class="chat-empty" id="chatEmpty">开始对话吧。发送的第一句会用当前用户的人设来回应。</div>
+        </div>
+        <div class="chat-input-row">
+          <textarea id="msgInput" placeholder="说点什么…（Enter 发送，Shift+Enter 换行）"></textarea>
+          <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">发送</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let activeQQ = null;
+    let users = [];
+    let providersCfg = null;
+    let currentProvider = 'local';
+    let selectedVoices = new Set();
+    let history = [];        // [{role:'user'|'assistant', content}]
+    let sending = false;
+    let toastTimer = null;
+
+    async function init() {
+      await loadUsers();
+      await loadProviders();
+      await loadLanguages();
+      await loadVoices();
+    }
+
+    // ── users ──────────────────────────────────────────────
+    async function loadUsers() {
+      try {
+        const [cfgRes, usersRes] = await Promise.all([
+          fetch('/api/config').then(r => r.json()),
+          fetch('/api/users').then(r => r.json()),
+        ]);
+        users = usersRes.users || [];
+        activeQQ = cfgRes.active_qq || (users[0] && users[0].qq) || null;
+        renderUserMenu();
+        renderActiveUser();
+      } catch (e) { showToast('加载用户失败', true); }
+    }
+
+    function renderActiveUser() {
+      document.getElementById('userLabel').textContent = activeQQ || '无用户';
+      document.getElementById('userAvatar').textContent =
+        activeQQ ? String(activeQQ).slice(-2) : '··';
+    }
+
+    function renderUserMenu() {
+      const menu = document.getElementById('userMenu');
+      if (!users.length) { menu.innerHTML = '<div class="empty" style="padding:12px">未发现用户</div>'; return; }
+      menu.innerHTML = users.map(u => `
+        <div class="u-item ${String(u.qq) === String(activeQQ) ? 'active' : ''}" onclick="switchUser('${u.qq}')">
+          <span class="avatar">${String(u.qq).slice(-2)}</span>
+          <div>
+            <div class="u-qq">${u.qq}</div>
+            <div class="u-meta">原始 ${u.voice_count} · 克隆 ${u.cloned_count} ${u.has_chat_log ? '· 含聊天记录' : ''}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    function toggleUserMenu() {
+      document.getElementById('userswitch').classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+      const sw = document.getElementById('userswitch');
+      if (sw && !sw.contains(e.target)) sw.classList.remove('open');
+    });
+
+    async function switchUser(qq) {
+      if (String(qq) === String(activeQQ)) { toggleUserMenu(); return; }
+      activeQQ = qq;
+      selectedVoices.clear();
+      toggleUserMenu();
+      renderUserMenu();
+      renderActiveUser();
+      resetChat();
+      await loadVoices();
+      showToast('已切换到 ' + qq);
+    }
+
+    // ── providers / languages ──────────────────────────────
+    async function loadProviders() {
+      try {
+        const cfg = await fetch('/api/config').then(r => r.json());
+        providersCfg = cfg.providers || null;
+        currentProvider = (providersCfg && providersCfg.default) || 'local';
+        const sel = document.getElementById('providerSelect');
+        const opts = [];
+        if (providersCfg && providersCfg.local) opts.push(`<option value="local">${providersCfg.local.label || '本地模型'}</option>`);
+        if (providersCfg && providersCfg.dashscope) opts.push(`<option value="dashscope">${providersCfg.dashscope.label || '云端'}</option>`);
+        sel.innerHTML = opts.join('') || '<option value="local">本地模型</option>';
+        sel.value = currentProvider;
+        renderCloudVoices();
+        onProviderChange();
+      } catch (e) { /* keep defaults */ }
+    }
+
+    function renderCloudVoices() {
+      const cloud = (providersCfg && providersCfg.dashscope) || {};
+      const sel = document.getElementById('cloudVoiceSelect');
+      const voices = cloud.voices || [];
+      sel.innerHTML = voices.length
+        ? voices.map(v => `<option value="${v.id}">${escapeHtml(v.label || v.id)}</option>`).join('')
+        : '<option value="">（无可用音色）</option>';
+    }
+
+    function onProviderChange() {
+      currentProvider = document.getElementById('providerSelect').value;
+      const isCloud = currentProvider === 'dashscope';
+      document.getElementById('cloudVoiceBox').style.display = isCloud ? 'block' : 'none';
+      document.getElementById('localVoiceBox').style.display = isCloud ? 'none' : 'block';
+    }
+
+    async function loadLanguages() {
+      try {
+        const cfg = await fetch('/api/config').then(r => r.json());
+        document.getElementById('langSelect').innerHTML =
+          (cfg.languages || [{code:'auto',label:'自动'}]).map(l =>
+            `<option value="${l.code}">${l.label}</option>`).join('');
+      } catch (e) {
+        document.getElementById('langSelect').innerHTML = '<option value="auto">自动（跟随样本）</option>';
+      }
+    }
+
+    // ── voices ─────────────────────────────────────────────
+    async function loadVoices() {
+      const box = document.getElementById('voiceList');
+      box.innerHTML = '<div class="empty">正在加载语音样本…</div>';
+      try {
+        const res = await fetch('/api/voices?qq=' + encodeURIComponent(activeQQ || '')).then(r => r.json());
+        const voices = res.voices || [];
+        if (!voices.length) { box.innerHTML = '<div class="empty">该用户暂无语音样本。</div>'; return; }
+        box.innerHTML = voices.map(v => {
+          const id = escapeHtml(v.id);
+          return `<label><input type="checkbox" value="${id}" onchange="toggleVoice('${id.replace(/'/g,"\\'")}', this.checked)"> ${escapeHtml(v.name || v.id)}</label>`;
+        }).join('');
+      } catch (e) {
+        box.innerHTML = '<div class="empty">加载语音样本失败。</div>';
+      }
+    }
+
+    function toggleVoice(id, on) {
+      if (on) selectedVoices.add(id); else selectedVoices.delete(id);
+    }
+
+    // ── chat ───────────────────────────────────────────────
+    function resetChat() {
+      history = [];
+      const scroll = document.getElementById('chatScroll');
+      scroll.innerHTML = '<div class="chat-empty" id="chatEmpty">开始对话吧。发送的第一句会用当前用户的人设来回应。</div>';
+    }
+
+    function appendBubble(role, text) {
+      const scroll = document.getElementById('chatScroll');
+      const empty = document.getElementById('chatEmpty');
+      if (empty) empty.remove();
+      const div = document.createElement('div');
+      div.className = 'bubble ' + (role === 'user' ? 'me' : 'them');
+      div.textContent = text;
+      scroll.appendChild(div);
+      scroll.scrollTop = scroll.scrollHeight;
+      return div;
+    }
+
+    function showTyping() {
+      const scroll = document.getElementById('chatScroll');
+      const t = document.createElement('div');
+      t.className = 'typing';
+      t.id = 'typingIndicator';
+      t.textContent = '对方正在输入…';
+      scroll.appendChild(t);
+      scroll.scrollTop = scroll.scrollHeight;
+    }
+    function hideTyping() {
+      const t = document.getElementById('typingIndicator');
+      if (t) t.remove();
+    }
+
+    document.getElementById('msgInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    async function sendMessage() {
+      if (sending) return;
+      const input = document.getElementById('msgInput');
+      const message = input.value.trim();
+      if (!message) return;
+
+      sending = true;
+      document.getElementById('sendBtn').disabled = true;
+      appendBubble('user', message);
+      input.value = '';
+      showTyping();
+
+      let reply;
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, qq: activeQQ, history }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '对话失败');
+        reply = data.reply || '';
+      } catch (e) {
+        hideTyping();
+        appendBubble('assistant', '（出错了：' + e.message + '）');
+        sending = false;
+        document.getElementById('sendBtn').disabled = false;
+        return;
+      }
+
+      hideTyping();
+      const bubble = appendBubble('assistant', reply);
+      history.push({ role: 'user', content: message });
+      history.push({ role: 'assistant', content: reply });
+
+      if (document.getElementById('voiceToggle').checked && reply.trim()) {
+        voiceReply(bubble, reply);
+      }
+      sending = false;
+      document.getElementById('sendBtn').disabled = false;
+      input.focus();
+    }
+
+    // ── voice the reply via the existing TTS endpoint ──────
+    async function voiceReply(bubble, text) {
+      const isCloud = currentProvider === 'dashscope';
+      const cloudVoice = (document.getElementById('cloudVoiceSelect') || {}).value || '';
+      if (isCloud && !cloudVoice) { addNote(bubble, '未选择云端音色，跳过朗读'); return; }
+      if (!isCloud && !selectedVoices.size) { addNote(bubble, '未选择语音样本，跳过朗读'); return; }
+
+      const note = addNote(bubble, '正在合成语音…');
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            provider: currentProvider,
+            voice: isCloud ? cloudVoice : null,
+            voice_ids: isCloud ? [] : Array.from(selectedVoices),
+            qq: activeQQ,
+            language: document.getElementById('langSelect').value || 'auto',
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '合成失败');
+        note.remove();
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.className = 'bubble-audio';
+        audio.src = data.url + '?t=' + Date.now();
+        bubble.appendChild(audio);
+        audio.play().catch(() => {});
+      } catch (e) {
+        note.textContent = '语音合成失败：' + e.message;
+      }
+    }
+
+    function addNote(bubble, text) {
+      const n = document.createElement('div');
+      n.className = 'bubble-note';
+      n.textContent = text;
+      bubble.appendChild(n);
+      document.getElementById('chatScroll').scrollTop = 1e9;
+      return n;
+    }
+
+    // ── utils ──────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showToast(msg, err) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (err ? ' err' : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
+    }
+
+    init();
+  </script>
+</body>
+</html>
