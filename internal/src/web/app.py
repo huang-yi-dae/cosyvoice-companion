@@ -218,7 +218,7 @@ def voice_messages(qq: str) -> List[dict]:
 def default_prompt(qq: str) -> str:
     return (
         "你现在要扮演一个人。你不是 AI，你就是这个人。\n\n"
-        f"## 你是谁\n你正在和一个你在意的人聊天，"
+        "## 你是谁\n你正在和一个你在意的人聊天，"
         "你的聊天风格是从真实聊天记录中学习的。\n\n"
         "## 核心性格\n- <性格要点，可在管理页重新生成>\n\n"
         "## 严格遵守的规则\n1. 回复简短、口语化。\n2. 保持一致的语气。\n"
@@ -582,7 +582,7 @@ async def api_save_knowledge(body: KnowledgePaths):
 
 
 # ---- automation pipeline -----------------------------------------------------
-from voicekit import pipeline as _pipeline
+from voicekit import pipeline as _pipeline  # noqa: E402  (grouped lazy import; see roadmap #3)
 
 _MAX_LOGS = 500
 _pipeline_lock = threading.Lock()
@@ -679,7 +679,7 @@ async def api_pipeline_status():
 
 
 # ---- model catalog / on-demand download --------------------------------------
-from voicekit import models as _models
+from voicekit import models as _models  # noqa: E402  (grouped lazy import; see roadmap #3)
 
 _dl_lock = threading.Lock()
 _dl_state: dict = {

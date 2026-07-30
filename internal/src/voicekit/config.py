@@ -250,15 +250,15 @@ class Config:
         langs = self.raw.get("tts", {}).get("languages")
         if not langs:
             return [{"code": "auto", "tag": "", "label": "自动（跟随样本）"}]
-        return [dict(l) for l in langs]
+        return [dict(lang) for lang in langs]
 
     def language_tag(self, code: Optional[str]) -> str:
         """CosyVoice language tag for a language code ("" for auto/unknown)."""
         if not code or code == "auto":
             return ""
-        for l in self.languages():
-            if l.get("code") == code:
-                return l.get("tag", "") or ""
+        for lang in self.languages():
+            if lang.get("code") == code:
+                return lang.get("tag", "") or ""
         return ""
 
     @property

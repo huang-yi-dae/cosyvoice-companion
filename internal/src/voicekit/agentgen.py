@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import collections
 import json
-from pathlib import Path
 from typing import Callable, List, Optional
 
 from .config import Config
@@ -122,8 +121,8 @@ def _chunk_messages(messages: list, qq: str) -> List[List[str]]:
     if current:
         chunks.append(current)
     # Keep only snippets that contain at least one line from each side.
-    return [c for c in chunks if any(l.startswith("我:") for l in c)
-            and any(l.startswith("对方:") for l in c)]
+    return [c for c in chunks if any(ln.startswith("我:") for ln in c)
+            and any(ln.startswith("对方:") for ln in c)]
 
 
 def generate_agent(

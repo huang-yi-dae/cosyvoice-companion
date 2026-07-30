@@ -1,5 +1,7 @@
 # QQ 语音分析与克隆项目
 
+[![CI](https://github.com/huang-yi-dae/cosyvoice-companion/actions/workflows/ci.yml/badge.svg)](https://github.com/huang-yi-dae/cosyvoice-companion/actions/workflows/ci.yml)
+
 QQ 聊天记录分析 + 基于 CosyVoice-300M 的语音克隆（个人研究用途，Windows / Python 3.11）。
 
 本项目采用**配置驱动 + 隐私分离**架构：所有隐私数据集中在 gitignore 的 `private/`
