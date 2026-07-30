@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CosyVoice Studio · 模型管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/studio.css" />
+  <style>
+    /* ── models-specific components ───────────────────────────── */
+    .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .model-card {
+      border: 1px solid var(--line); border-radius: var(--radius-sm);
+      background: var(--panel-2); padding: 18px 18px 16px;
+      display: flex; flex-direction: column; gap: 10px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .model-card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+    .model-card.is-default { border-color: var(--amber); }
+    .mc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .mc-name { font-family: var(--font-mono); font-size: 0.98rem; color: var(--ink); font-weight: 500; }
+    .mc-kind { font-size: 0.68rem; color: var(--ink-faint); margin-top: 3px; }
+    .mc-desc { font-size: 0.78rem; color: var(--ink-dim); line-height: 1.6; min-height: 40px; }
+    .mc-meta { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); }
+    .mc-meta b { color: var(--ink-dim); font-weight: 500; }
+    .mc-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
+    .badge {
+      font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: .5px;
+      padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+      border: 1px solid var(--line-strong); color: var(--ink-dim);
+    }
+    .badge.have { color: var(--teal); border-color: rgba(71,214,191,.4); background: rgba(71,214,191,.08); }
+    .badge.miss { color: var(--ink-faint); }
+    .badge.def  { color: var(--amber-hi); border-color: rgba(255,155,61,.5); background: rgba(255,155,61,.1); }
+
+    /* modal */
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(4,5,7,.72);
+      display: none; align-items: center; justify-content: center; z-index: 50;
+      backdrop-filter: blur(3px);
+    }
+    .modal-mask.open { display: flex; }
+    .modal {
+      width: min(460px, 92vw); background: var(--panel); border: 1px solid var(--line-strong);
+      border-radius: var(--radius); padding: 24px; box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    }
+    .modal h3 { font-family: var(--font-mono); font-size: 1.02rem; color: var(--ink); margin: 0 0 6px; }
+    .modal .sub { font-size: 0.78rem; color: var(--ink-faint); margin-bottom: 16px; }
+    .modal .kv { display: flex; justify-content: space-between; padding: 9px 0; border-top: 1px solid var(--line); font-size: 0.82rem; }
+    .modal .kv:first-of-type { border-top: none; }
+    .modal .kv span { color: var(--ink-faint); }
+    .modal .kv b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
+    .modal .warn { font-size: 0.72rem; color: var(--amber-hi); margin: 14px 0 4px; line-height: 1.6; }
+    .modal-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+    /* progress */
+    .dl-panel { margin-top: 22px; display: none; }
+    .dl-panel.show { display: block; }
+    .dl-bar-track { height: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin: 8px 0 14px; }
+    .dl-bar-fill { height: 100%; width: 30%; background: linear-gradient(90deg, var(--amber), var(--amber-hi)); border-radius: 999px; animation: slide 1.4s infinite ease-in-out; }
+    .dl-bar-fill.done { width: 100% !important; animation: none; background: var(--teal); }
+    .dl-bar-fill.err  { width: 100% !important; animation: none; background: var(--red); }
+    @keyframes slide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+    .log-console {
+      font-family: var(--font-mono); font-size: 0.74rem; line-height: 1.6;
+      background: #07080a; border: 1px solid var(--line); border-radius: var(--radius-sm);
+      padding: 14px; height: 240px; overflow-y: auto; color: var(--ink-dim);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .log-console .empty { color: var(--ink-faint); }
+    .dl-meta { display: flex; gap: 18px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); margin-bottom: 10px; }
+    .dl-meta b { color: var(--ink-dim); font-weight: 500; }
+  </style>
+</head>
+<body>
+  <!-- ── top bar ─────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      CosyVoice
+      <small>STUDIO / 模型管理</small>
+    </div>
+    <nav class="nav">
+      <a href="/">工作室</a>
+      <a href="/manage">管理台</a>
+      <a href="/pipeline">自动化</a>
+      <a href="/models" class="active">模型</a>
+    </nav>
+    <div class="spacer"></div>
+
+    <div class="userswitch" id="userswitch">
+      <button id="userBtn" onclick="toggleUserMenu()">
+        <span class="avatar" id="userAvatar">··</span>
+        <span class="mono" id="userLabel">加载中…</span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="usermenu" id="userMenu"></div>
+    </div>
+  </header>
+
+  <!-- ── main ───────────────────────────────────────────────── -->
+  <main class="wrap">
+    <div class="page-head">
+      <h1>选择并管理<span class="em">声音模型</span>。</h1>
+      <p>提供 CosyVoice 全系列开源模型：从通用零样本到指令控制、低延迟与新一代 0.5B。已下载的可直接在工作室使用；未下载的会显示体积与预估下载时间，确认后按需从 ModelScope 拉取。</p>
+    </div>
+
+    <div class="btn-row" style="margin-bottom:18px">
+      <button class="btn btn-ghost btn-sm" onclick="loadCatalog()">刷新列表</button>
+      <span class="meta" id="defaultMeta">默认模型：—</span>
+    </div>
+
+    <div class="model-grid" id="modelGrid"><div class="empty">正在加载模型列表…</div></div>
+
+    <!-- 下载进度 -->
+    <section class="panel dl-panel" id="dlPanel">
+      <div class="panel-head">
+        <span class="step">↓</span>
+        <div class="panel-title">下载进度
+          <small id="dlSub">—</small>
+        </div>
+      </div>
+      <div class="dl-meta">
+        <span>模型 <b id="dlName">—</b></span>
+        <span>开始 <b id="dlStart">—</b></span>
+        <span>结束 <b id="dlFinish">—</b></span>
+      </div>
+      <div class="dl-bar-track"><div class="dl-bar-fill" id="dlBar"></div></div>
+      <div class="log-console" id="dlLog"><span class="empty">暂无日志。</span></div>
+    </section>
+  </main>
+
+  <!-- 确认下载弹窗 -->
+  <div class="modal-mask" id="modalMask">
+    <div class="modal">
+      <h3 id="mdlTitle">下载模型</h3>
+      <div class="sub" id="mdlRepo">—</div>
+      <div class="kv"><span>模型大小</span><b id="mdlSize">—</b></div>
+      <div class="kv"><span>预估下载时间</span><b id="mdlTime">—</b></div>
+      <div class="kv"><span>下载来源</span><b>ModelScope</b></div>
+      <p class="warn">⚠ 下载将占用磁盘空间，耗时取决于网络。预估时间按约 5 Mbps 估算，仅供参考。</p>
+      <div class="modal-foot">
+        <button class="btn btn-ghost btn-sm" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary btn-sm" id="mdlConfirm" onclick="confirmDownload()">确认下载</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let activeQQ = null;
+    let users = [];
+    let catalog = [];
+    let pendingModel = null;
+    let pollTimer = null;
+    let toastTimer = null;
+
+    async function init() {
+      await loadUsers();
+      await loadCatalog();
+      await pollStatus();  // resume view if a download is in progress
+    }
+
+    // ── users ──────────────────────────────────────────────
+    async function loadUsers() {
+      try {
+        const [cfgRes, usersRes] = await Promise.all([
+          fetch('/api/config').then(r => r.json()),
+          fetch('/api/users').then(r => r.json()),
+        ]);
+        users = usersRes.users || [];
+        activeQQ = cfgRes.active_qq || (users[0] && users[0].qq) || null;
+        renderUserMenu();
+        renderActiveUser();
+      } catch (e) {
+        showToast('加载用户失败', true);
+      }
+    }
+
+    function renderActiveUser() {
+      document.getElementById('userLabel').textContent = activeQQ || '无用户';
+      document.getElementById('userAvatar').textContent =
+        activeQQ ? String(activeQQ).slice(-2) : '··';
+    }
+
+    function renderUserMenu() {
+      const menu = document.getElementById('userMenu');
+      if (!users.length) { menu.innerHTML = '<div class="empty" style="padding:12px">未发现用户</div>'; return; }
+      menu.innerHTML = users.map(u => `
+        <div class="u-item ${String(u.qq) === String(activeQQ) ? 'active' : ''}" onclick="selectUser('${u.qq}')">
+          <span class="avatar">${String(u.qq).slice(-2)}</span>
+          <div>
+            <div class="u-qq">${u.qq}</div>
+            <div class="u-meta">原始 ${u.voice_count} · 克隆 ${u.cloned_count} ${u.has_chat_log ? '· 含聊天记录' : ''}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    function selectUser(qq) {
+      activeQQ = qq;
+      document.getElementById('userswitch').classList.remove('open');
+      renderUserMenu();
+      renderActiveUser();
+    }
+
+    function toggleUserMenu() {
+      document.getElementById('userswitch').classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+      const sw = document.getElementById('userswitch');
+      if (sw && !sw.contains(e.target)) sw.classList.remove('open');
+    });
+
+    // ── catalog ────────────────────────────────────────────
+    async function loadCatalog() {
+      const grid = document.getElementById('modelGrid');
+      grid.innerHTML = '<div class="empty">正在加载模型列表…</div>';
+      try {
+        const res = await fetch('/api/models/catalog').then(r => r.json());
+        catalog = res.models || [];
+        document.getElementById('defaultMeta').textContent = '默认模型：' + (res.default || '—');
+        if (!catalog.length) {
+          grid.innerHTML = '<div class="empty">配置中没有模型。请检查 config.yaml 的 models.catalog。</div>';
+          return;
+        }
+        grid.innerHTML = catalog.map(renderCard).join('');
+      } catch (e) {
+        grid.innerHTML = '<div class="empty">加载模型列表失败。</div>';
+      }
+    }
+
+    function fmtSize(mb) {
+      if (!mb) return '未知';
+      return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb + ' MB';
+    }
+
+    function fmtTime(min) {
+      if (!min) return '未知';
+      if (min < 1) return '约 1 分钟内';
+      if (min < 60) return '约 ' + min + ' 分钟';
+      return '约 ' + (min / 60).toFixed(1) + ' 小时';
+    }
+
+    function renderCard(m) {
+      const name = escapeHtml(m.name);
+      const safe = m.name.replace(/'/g, "\\'");
+      let badge, action;
+      if (m.downloaded) {
+        badge = '<span class="badge have">已下载</span>';
+        action = `<a class="btn btn-primary btn-sm" href="/">前往合成</a>`;
+      } else {
+        badge = '<span class="badge miss">未下载</span>';
+        action = `<button class="btn btn-live btn-sm" onclick="openModal('${safe}')">⤓ 下载</button>`;
+      }
+      const defBadge = m.is_default ? '<span class="badge def">默认</span>' : '';
+      return `
+        <div class="model-card ${m.is_default ? 'is-default' : ''}">
+          <div class="mc-head">
+            <div>
+              <div class="mc-name">${name}</div>
+              <div class="mc-kind">${escapeHtml(m.kind || '')}</div>
+            </div>
+            ${defBadge}
+          </div>
+          <div class="mc-desc">${escapeHtml(m.description || '')}</div>
+          <div class="mc-meta">
+            <span>体积 <b>${fmtSize(m.size_mb)}</b></span>
+            <span>预估下载 <b>${fmtTime(m.est_minutes)}</b></span>
+          </div>
+          <div class="mc-foot">
+            ${badge}
+            ${action}
+          </div>
+        </div>`;
+    }
+
+    // ── confirm modal ──────────────────────────────────────
+    function openModal(name) {
+      const m = catalog.find(x => x.name === name);
+      if (!m) return;
+      pendingModel = name;
+      document.getElementById('mdlTitle').textContent = '下载 ' + m.name;
+      document.getElementById('mdlRepo').textContent = 'ModelScope 仓库：' + (m.repo_id || '—');
+      document.getElementById('mdlSize').textContent = fmtSize(m.size_mb);
+      document.getElementById('mdlTime').textContent = fmtTime(m.est_minutes);
+      document.getElementById('modalMask').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modalMask').classList.remove('open');
+      pendingModel = null;
+    }
+
+    async function confirmDownload() {
+      if (!pendingModel) return;
+      const name = pendingModel;
+      const btn = document.getElementById('mdlConfirm');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/models/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || ('HTTP ' + res.status));
+        }
+        showToast('已开始下载 ' + name);
+        closeModal();
+        startPolling();
+      } catch (e) {
+        showToast(e.message || '启动下载失败', true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ── download progress ──────────────────────────────────
+    function startPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(pollStatus, 1500);
+      pollStatus();
+    }
+
+    async function pollStatus() {
+      let st;
+      try {
+        st = await fetch('/api/models/download/status').then(r => r.json());
+      } catch (e) { return; }
+      renderProgress(st);
+      if (!st.running && pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        if (st.finished_at) {
+          if (st.ok) showToast('下载完成：' + (st.name || ''));
+          else showToast('下载失败：' + (st.error || st.name || ''), true);
+          loadCatalog();
+        }
+      }
+    }
+
+    function renderProgress(st) {
+      const panel = document.getElementById('dlPanel');
+      if (!st.name && !st.running && !st.finished_at) { panel.classList.remove('show'); return; }
+      panel.classList.add('show');
+
+      document.getElementById('dlName').textContent = st.name || '—';
+      document.getElementById('dlStart').textContent = st.started_at || '—';
+      document.getElementById('dlFinish').textContent = st.finished_at || (st.running ? '下载中…' : '—');
+
+      const sub = document.getElementById('dlSub');
+      const bar = document.getElementById('dlBar');
+      bar.className = 'dl-bar-fill';
+      if (st.running) sub.textContent = '正在从 ModelScope 下载…';
+      else if (st.ok === true) { sub.textContent = '下载完成'; bar.classList.add('done'); }
+      else if (st.ok === false) { sub.textContent = '下载失败'; bar.classList.add('err'); }
+      else sub.textContent = '—';
+
+      const log = document.getElementById('dlLog');
+      if (st.logs && st.logs.length) {
+        const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+        log.textContent = st.logs.join('\n');
+        if (atBottom) log.scrollTop = log.scrollHeight;
+      } else {
+        log.innerHTML = '<span class="empty">暂无日志。</span>';
+      }
+    }
+
+    // ── utils ──────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showToast(msg, err) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (err ? ' err' : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
+    }
+
+    init();
+  </script>
+</body>
+</html>

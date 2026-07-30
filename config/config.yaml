@@ -11,12 +11,26 @@ paths:
   # Vendored CosyVoice repository and pretrained model
   cosyvoice_repo: "internal/src/CosyVoice"
   model_dir: "internal/src/CosyVoice/pretrained_models/CosyVoice-300M"
+  # Directory holding all downloaded CosyVoice models (for the model selector)
+  models_root: "internal/src/CosyVoice/pretrained_models"
+  # Companion / roleplay agents (SystemPrompt + knowledge-base), relative to private_root
+  agents_subdir: "agents"
+  # Persisted web UI state (knowledge paths, prompt overrides), relative to private_root
+  state_file: "web_state.json"
 
   # External tool binaries (Windows)
   tools:
     silk_decoder: "internal/src/tools/silk_v3_decoder.exe"
     lame: "internal/src/tools/lame.exe"
     silk2mp3: "internal/src/tools/silk2mp3.exe"
+
+  # PowerShell script that extracts the NTQQ SQLCipher key (needs admin + QQ login)
+  ntqq_key_script: "internal/windows_ntqq_get_key.ps1"
+
+  # File names used by the automation pipeline (inside a user's decrypted dir)
+  encrypted_db_name: "nt_msg.clean.db"
+  decrypted_db_name: "nt_msg_decrypted.db"
+  clean_log_name: "chat_log_clean.json"
 
   # Per-user data layout, relative to private_root.
   # "{qq}" is substituted with the active user's QQ number at runtime.
@@ -42,11 +56,98 @@ audio:
   # Minimum acceptable source sample rate for CosyVoice reference audio
   target_sr: 16000
 
+# End-to-end automation pipeline (extract key -> decrypt -> export -> clean
+# -> convert voice -> generate agent). See internal/src/voicekit/pipeline.py.
+pipeline:
+  # SQLCipher parameters for the NTQQ database (do not change unless QQ updates).
+  cipher_page_size: 4096
+  kdf_iter: 4000
+  cipher_hmac_algorithm: "HMAC_SHA1"
+  cipher: "aes-256-cbc"
+  # Roleplay agent generation output (under private_root/agents/<name>).
+  agent_name_template: "companion-{qq}"
+  # Max short-phrase samples / knowledge snippets to keep when generating an agent.
+  knowledge_max_snippets: 300
+
 tts:
+  # Which provider handles synthesis by default: "local" (vendored CosyVoice,
+  # GPU) or "dashscope" (Aliyun Bailian cloud CosyVoice, no local GPU/model).
+  provider: local
+  providers:
+    # Local vendored CosyVoice: zero-shot cloning from reference samples.
+    local:
+      type: cosyvoice_local
+    # Aliyun Bailian (DashScope) cloud CosyVoice. API key comes from .env
+    # (DASHSCOPE_API_KEY) — never store secrets here.
+    dashscope:
+      type: dashscope
+      # target_model binds a voice: creation & synthesis must use the same one.
+      # cosyvoice-v3.5-flash supports zh/en/ja/yue/ko... ; cosyvoice-v2 is
+      # cheaper but Chinese/English only.
+      target_model: cosyvoice-v3.5-flash
+      region: cn-beijing
+      # Pre-registered voices: [{id: "cosyvoice-v3.5-flash-xxx-yyy", label: "我的音色"}]
+      voices: []
+      # Advanced: online voice enrollment needs a public audio URL (OSS).
+      oss:
+        enabled: false
   # Default prompt text used for zero-shot cloning
   default_prompt_text: "希望你以后能够做的比我还好呦。"
+  # Supported synthesis languages. "auto" keeps the current zero-shot behaviour
+  # (language follows the reference sample + prompt text); any other entry uses
+  # CosyVoice cross-lingual inference with the given tag prepended to the text.
+  # Tags must match CosyVoice: <|zh|><|en|><|ja|><|yue|><|ko|>.
+  languages:
+    - {code: "auto", tag: "",       label: "自动（跟随样本）"}
+    - {code: "zh",   tag: "<|zh|>", label: "中文"}
+    - {code: "en",   tag: "<|en|>", label: "英文"}
+    - {code: "ja",   tag: "<|ja|>", label: "日文"}
+    - {code: "yue",  tag: "<|yue|>",label: "粤语"}
+    - {code: "ko",   tag: "<|ko|>", label: "韩文"}
+
+# Model catalog for the /models manager. Each entry can be downloaded on demand
+# from ModelScope into paths.models_root/<name>. "size_mb" is an approximate
+# download size used to show size + an estimated time in the confirm dialog.
+models:
+  # Rough download throughput assumption (MB/s) for the time estimate only.
+  est_speed_mbps: 5
+  catalog:
+    - name: "CosyVoice-300M"
+      repo_id: "iic/CosyVoice-300M"
+      size_mb: 1200
+      kind: "通用零样本"
+      clone_ready: true
+      description: "默认模型，零样本声音克隆，中文效果好。"
+    - name: "CosyVoice-300M-SFT"
+      repo_id: "iic/CosyVoice-300M-SFT"
+      size_mb: 1200
+      kind: "预置说话人"
+      clone_ready: false
+      description: "内置多个微调说话人，非克隆用途（需 inference_sft 接口，不适用本工作室的零样本克隆）。"
+    - name: "CosyVoice-300M-Instruct"
+      repo_id: "iic/CosyVoice-300M-Instruct"
+      size_mb: 1200
+      kind: "指令控制"
+      clone_ready: false
+      description: "支持自然语言指令控制情感/风格，非克隆用途（需 inference_instruct 接口）。"
+    - name: "CosyVoice-300M-25Hz"
+      repo_id: "iic/CosyVoice-300M-25Hz"
+      size_mb: 1200
+      kind: "低延迟"
+      clone_ready: true
+      description: "25Hz 版本，推理更快、延迟更低，适配零样本克隆。"
+    - name: "CosyVoice2-0.5B"
+      repo_id: "iic/CosyVoice2-0.5B"
+      size_mb: 2500
+      kind: "新一代"
+      clone_ready: true
+      description: "CosyVoice 2.0，音质与稳定性更高，体积较大（需完整下载 CosyVoice-BlankEN 与 speech_tokenizer_v2.onnx）。"
 
 web:
   host: "0.0.0.0"
   port: 8000
   index_html: "internal/src/web/index.html"
+  manage_html: "internal/src/web/manage.html"
+  pipeline_html: "internal/src/web/pipeline.html"
+  models_html: "internal/src/web/models.html"
+  static_dir: "internal/src/web/static"

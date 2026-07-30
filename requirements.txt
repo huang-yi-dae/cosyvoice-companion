@@ -11,4 +11,9 @@ soundfile
 torch
 # SQLCipher access for DB decryption
 sqlcipher3
+# On-demand model downloads for the /models manager (ModelScope)
+modelscope
+# Cloud TTS provider (Aliyun Bailian / DashScope CosyVoice). Optional: only
+# needed for the cloud synthesis path; local cloning works without it.
+dashscope
 # CosyVoice model dependencies are vendored under internal/src/CosyVoice

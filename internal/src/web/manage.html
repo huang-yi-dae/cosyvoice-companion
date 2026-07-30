@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CosyVoice Studio · 管理台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/studio.css" />
+</head>
+<body>
+  <!-- ── top bar ─────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      CosyVoice
+      <small>STUDIO / 用户管理台</small>
+    </div>
+    <nav class="nav">
+      <a href="/">工作室</a>
+      <a href="/manage" class="active">管理台</a>
+      <a href="/pipeline">自动化</a>
+      <a href="/models">模型</a>
+    </nav>
+    <div class="spacer"></div>
+
+    <div class="userswitch" id="userswitch">
+      <button id="userBtn" onclick="toggleUserMenu()">
+        <span class="avatar" id="userAvatar">··</span>
+        <span class="mono" id="userLabel">加载中…</span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="usermenu" id="userMenu"></div>
+    </div>
+  </header>
+
+  <!-- ── main ───────────────────────────────────────────────── -->
+  <main class="wrap">
+    <div class="page-head">
+      <h1>用户与<span class="em">数据管理</span>。</h1>
+      <p>选择 QQ 用户，管理其语音消息、角色扮演提示词模板以及知识库仓库路径。每个用户的数据独立管理。</p>
+    </div>
+
+    <!-- 用户选择 -->
+    <section class="panel">
+      <div class="panel-head">
+        <span class="step">01</span>
+        <div class="panel-title">用户目录
+          <small>所有可用的 QQ 用户</small>
+        </div>
+      </div>
+      <div class="voice-grid" id="userGrid"><div class="empty">正在加载用户…</div></div>
+    </section>
+
+    <div class="grid cols-2" style="margin-top:20px;">
+      <!-- 语音消息 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span class="step">02</span>
+          <div class="panel-title">语音消息
+            <small id="msgSub">选定用户的语音消息</small>
+          </div>
+          <div class="spacer" style="flex:1"></div>
+          <span class="count-badge" id="msgCount">—</span>
+        </div>
+        <div id="msgContainer"><div class="empty">请选择一个用户。</div></div>
+      </section>
+
+      <!-- 知识库路径 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span class="step">03</span>
+          <div class="panel-title">知识库路径
+            <small>可作为知识库的仓库路径</small>
+          </div>
+        </div>
+        <div class="taglist" id="pathList"><div class="empty">请选择一个用户。</div></div>
+        <div class="field" style="margin-bottom:10px;">
+          <div class="btn-row">
+            <input type="text" id="newPath" placeholder="输入仓库路径后添加…" style="flex:1;min-width:180px" />
+            <button class="btn btn-ghost btn-sm" onclick="addPath()">＋ 添加</button>
+          </div>
+        </div>
+        <label class="field-label">发现的候选路径</label>
+        <div class="discovered" id="discovered"><span class="empty">无</span></div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-primary btn-sm" onclick="savePaths()">💾 保存路径配置</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- 角色扮演 prompt -->
+    <section class="panel" style="margin-top:20px;">
+      <div class="panel-head">
+        <span class="step">04</span>
+        <div class="panel-title">角色扮演提示词
+          <small id="promptSub">该用户的 System Prompt 模板</small>
+        </div>
+        <div class="spacer" style="flex:1"></div>
+        <span class="count-badge" id="promptSource">—</span>
+      </div>
+      <div class="field">
+        <textarea id="promptText" style="min-height:260px" placeholder="请选择一个用户以加载提示词…"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="savePrompt()">💾 保存</button>
+        <button class="btn btn-ghost" onclick="regeneratePrompt()">↻ 重新生成</button>
+        <span class="meta">重新生成会根据该用户的真实文本消息统计语言风格</span>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let activeQQ = null;
+    let users = [];
+    let currentPaths = [];
+
+    async function init() {
+      await loadUsers();
+      if (activeQQ) await selectUser(activeQQ);
+    }
+
+    // ── users ──────────────────────────────────────────────
+    async function loadUsers() {
+      try {
+        const [cfgRes, usersRes] = await Promise.all([
+          fetch('/api/config').then(r => r.json()),
+          fetch('/api/users').then(r => r.json()),
+        ]);
+        users = usersRes.users || [];
+        activeQQ = cfgRes.active_qq || (users[0] && users[0].qq) || null;
+        renderUserMenu();
+        renderUserGrid();
+        renderActiveUser();
+      } catch (e) {
+        showToast('加载用户失败', true);
+      }
+    }
+
+    function renderActiveUser() {
+      document.getElementById('userLabel').textContent = activeQQ || '无用户';
+      document.getElementById('userAvatar').textContent =
+        activeQQ ? String(activeQQ).slice(-2) : '··';
+    }
+
+    function renderUserMenu() {
+      const menu = document.getElementById('userMenu');
+      if (!users.length) { menu.innerHTML = '<div class="empty" style="padding:12px">未发现用户</div>'; return; }
+      menu.innerHTML = users.map(u => `
+        <div class="u-item ${String(u.qq) === String(activeQQ) ? 'active' : ''}" onclick="selectUser('${u.qq}')">
+          <span class="avatar">${String(u.qq).slice(-2)}</span>
+          <div>
+            <div class="u-qq">${u.qq}</div>
+            <div class="u-meta">原始 ${u.voice_count} · 克隆 ${u.cloned_count} ${u.has_chat_log ? '· 含聊天记录' : ''}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    function renderUserGrid() {
+      const grid = document.getElementById('userGrid');
+      if (!users.length) { grid.innerHTML = '<div class="empty">未发现用户。</div>'; return; }
+      grid.innerHTML = users.map(u => `
+        <div class="voice-card ${String(u.qq) === String(activeQQ) ? 'selected' : ''}"
+             onclick="selectUser('${u.qq}')">
+          <div class="vc-name">QQ ${u.qq}</div>
+          <div class="vc-meta">原始 ${u.voice_count} · 克隆 ${u.cloned_count}</div>
+          <div class="vc-meta">${u.has_chat_log ? '含聊天记录' : '无聊天记录'}</div>
+        </div>`).join('');
+    }
+
+    function toggleUserMenu() {
+      document.getElementById('userswitch').classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+      const sw = document.getElementById('userswitch');
+      if (sw && !sw.contains(e.target)) sw.classList.remove('open');
+    });
+
+    async function selectUser(qq) {
+      activeQQ = qq;
+      document.getElementById('userswitch').classList.remove('open');
+      renderUserMenu();
+      renderUserGrid();
+      renderActiveUser();
+      document.getElementById('msgSub').textContent = 'QQ ' + qq + ' 的语音消息';
+      document.getElementById('promptSub').textContent = 'QQ ' + qq + ' 的 System Prompt 模板';
+      await Promise.all([loadMessages(qq), loadPrompt(qq), loadPaths(qq)]);
+    }
+
+    // ── voice messages ─────────────────────────────────────
+    async function loadMessages(qq) {
+      const box = document.getElementById('msgContainer');
+      box.innerHTML = '<div class="empty">正在加载…</div>';
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(qq)}/messages`).then(r => r.json());
+        const msgs = res.messages || [];
+        document.getElementById('msgCount').textContent = res.count + ' 条';
+        if (!msgs.length) { box.innerHTML = '<div class="empty">该用户暂无语音消息。</div>'; return; }
+
+        const withWav = msgs.filter(m => m.has_wav).length;
+        const rows = msgs.map(m => `
+          <div class="msg-row">
+            <span class="t">${m.time || '—'}</span>
+            <span class="f" title="${m.file || ''}">${m.file || '（未知文件）'}</span>
+            <span class="pill ${m.has_wav ? 'ok' : 'no'}">${m.has_wav ? '已转换' : '未转换'}</span>
+          </div>`).join('');
+
+        box.innerHTML = `
+          <details class="collapse" open>
+            <summary>全部语音消息 · ${msgs.length} 条（${withWav} 条已转换 WAV）</summary>
+            <div class="body">${rows}</div>
+          </details>`;
+      } catch (e) {
+        box.innerHTML = '<div class="empty">加载失败。</div>';
+      }
+    }
+
+    // ── prompt ─────────────────────────────────────────────
+    async function loadPrompt(qq) {
+      const ta = document.getElementById('promptText');
+      ta.value = '加载中…';
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(qq)}/prompt`).then(r => r.json());
+        ta.value = res.content || '';
+        document.getElementById('promptSource').textContent = sourceLabel(res.source);
+      } catch (e) {
+        ta.value = '';
+        showToast('加载提示词失败', true);
+      }
+    }
+
+    function sourceLabel(s) {
+      if (s === 'override') return '已自定义';
+      if (s === 'regenerated') return '已重新生成';
+      if (s === 'default') return '默认模板';
+      return s || '—';
+    }
+
+    async function savePrompt() {
+      if (!activeQQ) return;
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(activeQQ)}/prompt`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({content: document.getElementById('promptText').value}),
+        });
+        if (!res.ok) throw new Error();
+        document.getElementById('promptSource').textContent = '已自定义';
+        showToast('提示词已保存 ✓');
+      } catch (e) { showToast('保存失败', true); }
+    }
+
+    async function regeneratePrompt() {
+      if (!activeQQ) return;
+      showToast('正在根据聊天记录重新生成…');
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(activeQQ)}/prompt/regenerate`, {method: 'POST'});
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '');
+        document.getElementById('promptText').value = data.content || '';
+        document.getElementById('promptSource').textContent = '已重新生成';
+        showToast('已重新生成 ✓');
+      } catch (e) { showToast('重新生成失败', true); }
+    }
+
+    // ── knowledge paths ────────────────────────────────────
+    async function loadPaths(qq) {
+      try {
+        const res = await fetch('/api/knowledge-paths?qq=' + encodeURIComponent(qq)).then(r => r.json());
+        currentPaths = res.paths || [];
+        renderPaths();
+        renderDiscovered(res.discovered || []);
+      } catch (e) {
+        document.getElementById('pathList').innerHTML = '<div class="empty">加载失败。</div>';
+      }
+    }
+
+    function renderPaths() {
+      const box = document.getElementById('pathList');
+      if (!currentPaths.length) { box.innerHTML = '<div class="empty">尚未配置知识库路径。</div>'; return; }
+      box.innerHTML = currentPaths.map((p, i) => `
+        <div class="tag">
+          <span class="path" title="${escapeHtml(p)}">${escapeHtml(p)}</span>
+          <button class="rm" onclick="removePath(${i})" title="移除">✕</button>
+        </div>`).join('');
+    }
+
+    function renderDiscovered(list) {
+      const box = document.getElementById('discovered');
+      if (!list.length) { box.innerHTML = '<span class="empty">无</span>'; return; }
+      box.innerHTML = list.map(d => `
+        <span class="chip" onclick="addDiscovered('${escapeHtml(d.path).replace(/'/g, "\\'")}')">
+          ${escapeHtml(d.label)} <span class="n">(${d.files})</span>
+        </span>`).join('');
+    }
+
+    function addPath() {
+      const inp = document.getElementById('newPath');
+      const v = inp.value.trim();
+      if (!v) return;
+      if (!currentPaths.includes(v)) currentPaths.push(v);
+      inp.value = '';
+      renderPaths();
+    }
+
+    function addDiscovered(p) {
+      if (!currentPaths.includes(p)) { currentPaths.push(p); renderPaths(); }
+    }
+
+    function removePath(i) { currentPaths.splice(i, 1); renderPaths(); }
+
+    async function savePaths() {
+      if (!activeQQ) return;
+      try {
+        const res = await fetch('/api/knowledge-paths', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({qq: activeQQ, paths: currentPaths}),
+        });
+        if (!res.ok) throw new Error();
+        showToast('路径配置已保存 ✓');
+      } catch (e) { showToast('保存失败', true); }
+    }
+
+    // ── helpers ────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"]/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    }
+    let toastTimer = null;
+    function showToast(msg, err) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (err ? ' err' : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
+    }
+
+    init();
+  </script>
+</body>
+</html>

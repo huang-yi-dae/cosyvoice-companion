@@ -9,10 +9,14 @@ Windows-only (PowerShell). Python 3.11. Config-driven with strict privacy separa
 
 ## Python Environment
 
-All scripts must use the project venv, not system Python:
+All scripts must use the project venv (`.venv` at the repo root), not system
+Python. Invoke it by its path:
 ```
-internal/env/voice-clone-env/Scripts/python.exe <script>
+.venv\Scripts\python.exe <script>
 ```
+From PowerShell you can also run `./setup.ps1` (creates/checks `.venv`) and
+`./run.ps1` (ensures `.venv` then starts the web app); both resolve `.venv` by
+ABSOLUTE path so the working directory never matters.
 
 ## Configuration & Privacy (READ FIRST)
 
@@ -50,7 +54,7 @@ QQ voice messages are SILK v3:
 ## Web App
 
 ```
-internal/env/voice-clone-env/Scripts/python.exe internal/src/web/app.py
+.venv\Scripts\python.exe internal/src/web/app.py
 ```
 Serves FastAPI on the host/port from `config/config.yaml`. Frontend is a single `index.html`.
 
@@ -58,5 +62,5 @@ Serves FastAPI on the host/port from `config/config.yaml`. Frontend is a single 
 
 - All UI text and reports are in Chinese.
 - No tests, no lint config, no build system — scripts are run directly.
-- `internal/env/` contains a ~large venv; do not delete or recreate it.
+- `.venv/` (repo root) is a ~large venv; do not delete or recreate it.
 - PowerShell: use `;` not `&&` as a statement separator.

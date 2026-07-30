@@ -1,522 +1,502 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CosyVoice 语音克隆</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: white;
-            text-align: center;
-            font-size: 2rem;
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .card-title {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #667eea;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
-        }
-        textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            resize: vertical;
-            min-height: 100px;
-            transition: border-color 0.3s;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            background: white;
-            cursor: pointer;
-        }
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .btn {
-            display: inline-block;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        .btn-primary:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .btn-success {
-            background: #4caf50;
-            color: white;
-        }
-        .btn-success:hover {
-            background: #388e3c;
-        }
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .audio-player {
-            width: 100%;
-            margin: 15px 0;
-        }
-        .status {
-            padding: 10px;
-            border-radius: 8px;
-            margin: 10px 0;
-            font-size: 14px;
-        }
-        .status-info {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
-        .status-success {
-            background: #e8f5e9;
-            color: #388e3c;
-        }
-        .status-error {
-            background: #ffebee;
-            color: #c62828;
-        }
-        .voice-category {
-            margin-bottom: 15px;
-        }
-        .voice-category-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #667eea;
-            margin-bottom: 8px;
-            padding-left: 5px;
-            border-left: 3px solid #667eea;
-        }
-        .voice-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 10px;
-        }
-        .voice-item {
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .voice-item:hover {
-            border-color: #667eea;
-            background: #f5f5f5;
-        }
-        .voice-item.selected {
-            border-color: #667eea;
-            background: #e8eaf6;
-        }
-        .voice-item.cloned {
-            border-color: #4caf50;
-            background: #e8f5e9;
-        }
-        .voice-item.cloned.selected {
-            border-color: #2e7d32;
-            background: #c8e6c9;
-        }
-        .voice-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .voice-name {
-            font-weight: bold;
-            color: #333;
-            font-size: 14px;
-        }
-        .voice-info {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        .voice-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            margin-left: 5px;
-        }
-        .badge-cloned {
-            background: #4caf50;
-            color: white;
-        }
-        .btn-play {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 5px;
-            border-radius: 50%;
-            transition: background 0.3s;
-        }
-        .btn-play:hover {
-            background: rgba(0,0,0,0.1);
-        }
-        .saved-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .saved-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .saved-item:last-child {
-            border-bottom: none;
-        }
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-        .loading.active {
-            display: block;
-        }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CosyVoice Studio · 克隆工作室</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/studio.css" />
 </head>
 <body>
-    <div class="container">
-        <h1>🎤 CosyVoice 语音克隆</h1>
-        
-        <!-- Voice Selection -->
-        <div class="card">
-            <div class="card-title">1. 选择音色</div>
-            <div class="voice-list" id="voiceList">
-                <!-- Voices will be loaded here -->
-            </div>
-        </div>
-        
-        <!-- Text Input -->
-        <div class="card">
-            <div class="card-title">2. 输入文本</div>
-            <div class="form-group">
-                <label for="textInput">要合成的文本：</label>
-                <textarea id="textInput" placeholder="请输入要转换为语音的文本...">你好，我是你的朋友，最近怎么样？</textarea>
-            </div>
-            <div class="form-group">
-                <label for="promptText">提示文本（可选）：</label>
-                <input type="text" id="promptText" value="希望你以后能够做的比我还好呦。" style="width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;">
-            </div>
-        </div>
-        
-        <!-- Generate -->
-        <div class="card">
-            <div class="card-title">3. 生成语音</div>
-            <button class="btn btn-primary" id="generateBtn" onclick="generateSpeech()">
-                生成语音
-            </button>
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p>正在生成语音，请稍候...</p>
-            </div>
-            <div id="status"></div>
-        </div>
-        
-        <!-- Audio Player -->
-        <div class="card" id="playerCard" style="display:none;">
-            <div class="card-title">4. 试听与保存</div>
-            <audio id="audioPlayer" class="audio-player" controls></audio>
-            <div class="btn-group">
-                <button class="btn btn-success" onclick="saveAudio()">
-                    保存语音
-                </button>
-                <button class="btn btn-primary" onclick="generateSpeech()">
-                    重新生成
-                </button>
-            </div>
-        </div>
-        
-        <!-- Saved Files -->
-        <div class="card">
-            <div class="card-title">已保存的语音</div>
-            <div class="saved-list" id="savedList">
-                <p style="color:#666;">暂无保存的语音</p>
-            </div>
-        </div>
+  <!-- ── top bar ─────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      CosyVoice
+      <small>STUDIO / 声音克隆台</small>
+    </div>
+    <nav class="nav">
+      <a href="/" class="active">工作室</a>
+      <a href="/manage">管理台</a>
+      <a href="/pipeline">自动化</a>
+      <a href="/models">模型</a>
+    </nav>
+    <div class="spacer"></div>
+
+    <div class="userswitch" id="userswitch">
+      <button id="userBtn" onclick="toggleUserMenu()">
+        <span class="avatar" id="userAvatar">··</span>
+        <span class="mono" id="userLabel">加载中…</span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="usermenu" id="userMenu"></div>
+    </div>
+  </header>
+
+  <!-- ── main ───────────────────────────────────────────────── -->
+  <main class="wrap">
+    <div class="page-head">
+      <h1>把文字，说成<span class="em">你的声音</span>。</h1>
+      <p>选择模型与语音样本，输入文本，即刻合成克隆语音。多选样本会自动拼接为更丰富的参考音色。</p>
     </div>
 
-    <script>
-        let selectedVoice = null;
-        let currentFilename = null;
+    <div class="grid cols-2">
+      <!-- 左列：模型 + 样本 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span class="step">01</span>
+          <div class="panel-title">音色源
+            <small>选择提供方与音色</small>
+          </div>
+        </div>
 
-        // Load voices on page load
-        window.onload = function() {
-            loadVoices();
-            loadSaved();
+        <div class="field">
+          <label class="field-label" for="providerSelect">提供方</label>
+          <select id="providerSelect"></select>
+        </div>
+
+        <!-- 本地：模型 + 样本 -->
+        <div id="localSource">
+          <div class="field">
+            <label class="field-label" for="modelSelect">克隆模型</label>
+            <select id="modelSelect"></select>
+          </div>
+
+          <div class="samplebar">
+            <label class="field-label" style="margin:0">语音样本</label>
+            <span class="count-badge" id="sampleCount">已选 0</span>
+          </div>
+          <div id="voiceContainer">
+            <div class="empty">正在加载语音样本…</div>
+          </div>
+          <p class="hint">点击卡片选择/取消；点击 ▶ 试听原始样本。选择多个样本可获得更稳定的音色。</p>
+        </div>
+
+        <!-- 云端：预注册音色下拉 -->
+        <div id="cloudSource" style="display:none">
+          <div class="field">
+            <label class="field-label" for="cloudVoiceSelect">云端音色</label>
+            <select id="cloudVoiceSelect"></select>
+          </div>
+          <p class="hint" id="cloudHint">云端音色在阿里云百炼控制台或配置文件中预先创建，无需本地样本。</p>
+        </div>
+      </section>
+
+      <!-- 右列：文本 + 生成 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span class="step">02</span>
+          <div class="panel-title">合成文本
+            <small>输入要转换的内容与提示语</small>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="textInput">目标文本</label>
+          <textarea id="textInput" placeholder="输入想让声音说出的文字…"></textarea>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="langSelect">合成语言</label>
+          <select id="langSelect"></select>
+          <p class="hint" style="margin-top:6px">选“自动”时语言跟随参考样本；选具体语言时使用跨语种合成，让发音更贴合所选语言。</p>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="promptText">提示语气（可选）</label>
+          <input type="text" id="promptText" placeholder="留空则使用默认提示" />
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="genBtn" onclick="generateSpeech()">
+            ⏺ 开始克隆
+          </button>
+          <span class="meta" id="modelMeta"></span>
+        </div>
+
+        <div class="vu" id="vu">
+          <div class="vu-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <span>正在合成，首次加载模型约需 1 分钟…</span>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div id="resultBox" style="display:none; margin-top:16px;">
+          <div class="divider"></div>
+          <label class="field-label">合成结果</label>
+          <audio id="resultAudio" controls></audio>
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-live btn-sm" onclick="saveAudio()">💾 保存到收藏</button>
+            <span class="meta" id="resultMeta"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 已保存 -->
+    <section class="panel" style="margin-top:20px;">
+      <div class="panel-head">
+        <span class="step">03</span>
+        <div class="panel-title">收藏夹
+          <small>已保存的合成语音</small>
+        </div>
+      </div>
+      <div id="savedContainer"><div class="empty">尚无保存的语音。</div></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── state ──────────────────────────────────────────────
+    let activeQQ = null;
+    let users = [];
+    let selectedVoices = new Set();
+    let currentFilename = null;
+    let previewAudio = null;
+    let providersCfg = null;
+    let currentProvider = 'local';
+
+    // ── boot ───────────────────────────────────────────────
+    async function init() {
+      await loadUsers();
+      await loadLanguages();
+      await loadProviders();
+      await loadModels();
+      await loadVoices();
+      await loadSaved();
+    }
+
+    // ── providers (local / cloud) ──────────────────────────
+    async function loadProviders() {
+      try {
+        const cfg = await fetch('/api/config').then(r => r.json());
+        providersCfg = cfg.providers || null;
+        const sel = document.getElementById('providerSelect');
+        if (!providersCfg) { sel.innerHTML = '<option value="local">本地模型</option>'; return; }
+        const local = providersCfg.local || {};
+        const cloud = providersCfg.dashscope || {};
+        sel.innerHTML =
+          `<option value="local">${local.label || '本地模型'}</option>` +
+          `<option value="dashscope">${cloud.label || '阿里云百炼（云端）'}</option>`;
+        currentProvider = providersCfg.default || 'local';
+        sel.value = currentProvider;
+        sel.onchange = () => { currentProvider = sel.value; applyProvider(); };
+        applyProvider();
+      } catch (e) {
+        document.getElementById('providerSelect').innerHTML =
+          '<option value="local">本地模型</option>';
+      }
+    }
+
+    function applyProvider() {
+      const isCloud = currentProvider === 'dashscope';
+      document.getElementById('localSource').style.display = isCloud ? 'none' : '';
+      document.getElementById('cloudSource').style.display = isCloud ? '' : 'none';
+      document.getElementById('modelMeta').textContent =
+        isCloud ? '提供方：阿里云百炼（云端）'
+                : '模型：' + (document.getElementById('modelSelect').value || '—');
+      if (isCloud) loadCloudVoices();
+    }
+
+    async function loadCloudVoices() {
+      const sel = document.getElementById('cloudVoiceSelect');
+      const hint = document.getElementById('cloudHint');
+      const cloud = (providersCfg && providersCfg.dashscope) || {};
+      if (!cloud.configured) {
+        sel.innerHTML = '<option value="">未配置 API Key</option>';
+        hint.innerHTML = '尚未配置 <code>DASHSCOPE_API_KEY</code>。请在项目 <code>.env</code> 填入阿里云百炼 API Key 并重启服务后使用云端合成。';
+        return;
+      }
+      try {
+        const res = await fetch('/api/cloud/voices').then(r => r.json());
+        const voices = res.voices || [];
+        if (!voices.length) {
+          sel.innerHTML = '<option value="">暂无云端音色</option>';
+          hint.textContent = '账号下暂无音色，请在阿里云百炼控制台创建音色，或在 config.yaml 的 tts.providers.dashscope.voices 中预置 voice_id。';
+          return;
+        }
+        sel.innerHTML = voices.map(v =>
+          `<option value="${v.id}">${v.label || v.id}</option>`).join('');
+        hint.textContent = '云端音色由 target_model 绑定，创建与合成需一致。';
+      } catch (e) {
+        sel.innerHTML = '<option value="">加载云端音色失败</option>';
+      }
+    }
+
+    // ── languages ──────────────────────────────────────────
+    async function loadLanguages() {
+      try {
+        const cfg = await fetch('/api/config').then(r => r.json());
+        const langs = cfg.languages || [];
+        const sel = document.getElementById('langSelect');
+        if (!langs.length) {
+          sel.innerHTML = '<option value="auto">自动（跟随样本）</option>';
+          return;
+        }
+        sel.innerHTML = langs.map(l =>
+          `<option value="${l.code}">${l.label}</option>`).join('');
+      } catch (e) {
+        document.getElementById('langSelect').innerHTML =
+          '<option value="auto">自动（跟随样本）</option>';
+      }
+    }
+
+    // providers duplicate removed
+
+    // ── users ──────────────────────────────────────────────
+    async function loadUsers() {
+      try {
+        const [cfgRes, usersRes] = await Promise.all([
+          fetch('/api/config').then(r => r.json()),
+          fetch('/api/users').then(r => r.json()),
+        ]);
+        users = usersRes.users || [];
+        activeQQ = cfgRes.active_qq || (users[0] && users[0].qq) || null;
+        renderUserMenu();
+        renderActiveUser();
+      } catch (e) {
+        showToast('加载用户失败', true);
+      }
+    }
+
+    function renderActiveUser() {
+      const u = users.find(x => String(x.qq) === String(activeQQ));
+      document.getElementById('userLabel').textContent = activeQQ || '无用户';
+      document.getElementById('userAvatar').textContent =
+        activeQQ ? String(activeQQ).slice(-2) : '··';
+    }
+
+    function renderUserMenu() {
+      const menu = document.getElementById('userMenu');
+      if (!users.length) {
+        menu.innerHTML = '<div class="empty" style="padding:12px">未发现用户</div>';
+        return;
+      }
+      menu.innerHTML = users.map(u => `
+        <div class="u-item ${String(u.qq) === String(activeQQ) ? 'active' : ''}"
+             onclick="switchUser('${u.qq}')">
+          <span class="avatar">${String(u.qq).slice(-2)}</span>
+          <div>
+            <div class="u-qq">${u.qq}</div>
+            <div class="u-meta">原始 ${u.voice_count} · 克隆 ${u.cloned_count} ${u.has_chat_log ? '· 含聊天记录' : ''}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleUserMenu() {
+      document.getElementById('userswitch').classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+      const sw = document.getElementById('userswitch');
+      if (sw && !sw.contains(e.target)) sw.classList.remove('open');
+    });
+
+    async function switchUser(qq) {
+      if (String(qq) === String(activeQQ)) { toggleUserMenu(); return; }
+      activeQQ = qq;
+      selectedVoices.clear();
+      toggleUserMenu();
+      renderUserMenu();
+      renderActiveUser();
+      await loadVoices();
+      updateSampleCount();
+      showToast('已切换到 ' + qq);
+    }
+
+    // ── models ─────────────────────────────────────────────
+    async function loadModels() {
+      try {
+        const res = await fetch('/api/models').then(r => r.json());
+        const sel = document.getElementById('modelSelect');
+        sel.innerHTML = (res.models || []).map(m => {
+          const cloneReady = m.clone_ready !== false;
+          const disabled = (!m.available || !cloneReady) ? 'disabled' : '';
+          const selected = (m.is_default && m.available && cloneReady) ? 'selected' : '';
+          let note = '';
+          if (!m.available) note = '（不可用）';
+          else if (!cloneReady) note = '（不适用克隆）';
+          return `<option value="${m.name}" ${selected} ${disabled}>
+             ${m.name}${note}${m.is_default ? ' · 默认' : ''}
+           </option>`;
+        }).join('');
+        document.getElementById('modelMeta').textContent =
+          '模型：' + (res.default || '—');
+        sel.onchange = () => {
+          document.getElementById('modelMeta').textContent = '模型：' + sel.value;
         };
+      } catch (e) {
+        document.getElementById('modelSelect').innerHTML = '<option>加载失败</option>';
+      }
+    }
 
-        // Load available voices
-        async function loadVoices() {
-            try {
-                const response = await fetch('/api/voices');
-                const data = await response.json();
-                
-                const voiceList = document.getElementById('voiceList');
-                voiceList.innerHTML = '';
-                
-                // Group voices by category
-                const categories = {};
-                data.voices.forEach(voice => {
-                    const cat = voice.category || '其他';
-                    if (!categories[cat]) categories[cat] = [];
-                    categories[cat].push(voice);
-                });
-                
-                // Render each category
-                for (const [category, voices] of Object.entries(categories)) {
-                    const categoryDiv = document.createElement('div');
-                    categoryDiv.className = 'voice-category';
-                    
-                    const titleDiv = document.createElement('div');
-                    titleDiv.className = 'voice-category-title';
-                    titleDiv.textContent = category;
-                    categoryDiv.appendChild(titleDiv);
-                    
-                    const gridDiv = document.createElement('div');
-                    gridDiv.className = 'voice-list';
-                    
-                    voices.forEach(voice => {
-                        const div = document.createElement('div');
-                        const isCloned = voice.category === '克隆音色';
-                        div.className = `voice-item ${isCloned ? 'cloned' : ''}`;
-                        
-                        const badge = isCloned ? '<span class="voice-badge badge-cloned">克隆</span>' : '';
-                        const playBtn = `<button class="btn-play" onclick="event.stopPropagation(); playVoice('${voice.category}', '${voice.name.replace(/'/g, "\\'")}')" title="试听">▶️</button>`;
-                        
-                        div.innerHTML = `
-                            <div class="voice-header">
-                                <div class="voice-name">${voice.name}${badge}</div>
-                                ${playBtn}
-                            </div>
-                            <div class="voice-info">${voice.duration}秒 | ${(voice.size/1024).toFixed(1)}KB</div>
-                        `;
-                        div.onclick = () => selectVoice(voice.id, div);
-                        gridDiv.appendChild(div);
-                    });
-                    
-                    categoryDiv.appendChild(gridDiv);
-                    voiceList.appendChild(categoryDiv);
-                }
-                
-                // Select first voice by default
-                if (data.voices.length > 0) {
-                    const firstItem = voiceList.querySelector('.voice-item');
-                    if (firstItem) {
-                        selectVoice(data.voices[0].id, firstItem);
-                    }
-                }
-            } catch (error) {
-                showStatus('加载音色失败: ' + error.message, 'error');
-            }
+    // ── voices ─────────────────────────────────────────────
+    async function loadVoices() {
+      const box = document.getElementById('voiceContainer');
+      box.innerHTML = '<div class="empty">正在加载语音样本…</div>';
+      try {
+        const q = activeQQ ? ('?qq=' + encodeURIComponent(activeQQ)) : '';
+        const res = await fetch('/api/voices' + q).then(r => r.json());
+        const voices = res.voices || [];
+        if (!voices.length) {
+          box.innerHTML = '<div class="empty">该用户暂无语音样本。</div>';
+          return;
         }
+        const groups = {};
+        voices.forEach(v => { (groups[v.category] = groups[v.category] || []).push(v); });
 
-        // Select a voice
-        function selectVoice(voiceId, element) {
-            selectedVoice = voiceId;
-            
-            // Update UI
-            document.querySelectorAll('.voice-item').forEach(item => {
-                item.classList.remove('selected');
-            });
-            element.classList.add('selected');
+        let html = '';
+        for (const cat of Object.keys(groups)) {
+          html += `<div class="cat-label">${cat}</div><div class="voice-grid">`;
+          html += groups[cat].map(v => renderVoiceCard(v)).join('');
+          html += '</div>';
         }
+        box.innerHTML = html;
+      } catch (e) {
+        box.innerHTML = '<div class="empty">加载失败。</div>';
+      }
+      updateSampleCount();
+    }
 
-        // Generate speech
-        async function generateSpeech() {
-            if (!selectedVoice) {
-                showStatus('请先选择一个音色', 'error');
-                return;
-            }
-            
-            const text = document.getElementById('textInput').value.trim();
-            if (!text) {
-                showStatus('请输入要合成的文本', 'error');
-                return;
-            }
-            
-            const promptText = document.getElementById('promptText').value.trim();
-            
-            // Show loading
-            document.getElementById('loading').classList.add('active');
-            document.getElementById('generateBtn').disabled = true;
-            document.getElementById('playerCard').style.display = 'none';
-            showStatus('正在生成语音...', 'info');
-            
-            try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        text: text,
-                        voice_id: selectedVoice,
-                        prompt_text: promptText
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    currentFilename = data.filename;
-                    
-                    // Play audio
-                    const audioPlayer = document.getElementById('audioPlayer');
-                    audioPlayer.src = data.url;
-                    document.getElementById('playerCard').style.display = 'block';
-                    
-                    showStatus(`生成成功！时长: ${data.duration}秒`, 'success');
-                } else {
-                    showStatus('生成失败: ' + data.detail, 'error');
-                }
-            } catch (error) {
-                showStatus('生成失败: ' + error.message, 'error');
-            } finally {
-                document.getElementById('loading').classList.remove('active');
-                document.getElementById('generateBtn').disabled = false;
-            }
-        }
+    function renderVoiceCard(v) {
+      const isCloned = v.category === '克隆音色';
+      const bars = Array.from({length: 9}, () =>
+        `<i style="height:${20 + Math.random()*70}%"></i>`).join('');
+      const sel = selectedVoices.has(v.id) ? 'selected' : '';
+      const safeId = v.id.replace(/'/g, "\\'");
+      return `
+        <div class="voice-card ${sel} ${isCloned ? 'cloned' : ''}"
+             data-id="${encodeURIComponent(v.id)}"
+             onclick="toggleVoice('${safeId}', this)">
+          <div class="vc-name" title="${v.name}">${v.name}</div>
+          <div class="vc-meta">${v.duration || 0}s · ${(v.size/1024).toFixed(0)}KB
+            <button class="play-mini" onclick="previewVoice(event, '${safeId}')">▶</button>
+          </div>
+          <div class="wave">${bars}</div>
+        </div>`;
+    }
 
-        // Save audio
-        async function saveAudio() {
-            if (!currentFilename) {
-                showStatus('没有可保存的语音', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/save/${currentFilename}`, { method: 'POST' });
-                const data = await response.json();
-                
-                if (data.success) {
-                    showStatus('语音已保存！', 'success');
-                    loadSaved();
-                } else {
-                    showStatus('保存失败', 'error');
-                }
-            } catch (error) {
-                showStatus('保存失败: ' + error.message, 'error');
-            }
-        }
+    function toggleVoice(id, el) {
+      if (selectedVoices.has(id)) { selectedVoices.delete(id); el.classList.remove('selected'); }
+      else { selectedVoices.add(id); el.classList.add('selected'); }
+      updateSampleCount();
+    }
 
-        // Load saved files
-        async function loadSaved() {
-            try {
-                const response = await fetch('/api/saved');
-                const data = await response.json();
-                
-                const savedList = document.getElementById('savedList');
-                
-                if (data.files.length === 0) {
-                    savedList.innerHTML = '<p style="color:#666;">暂无保存的语音</p>';
-                    return;
-                }
-                
-                savedList.innerHTML = '';
-                data.files.forEach(file => {
-                    const div = document.createElement('div');
-                    div.className = 'saved-item';
-                    div.innerHTML = `
-                        <div>
-                            <strong>${file.filename.substring(0, 12)}...</strong>
-                            <div style="font-size:12px;color:#666;">${file.time}</div>
-                        </div>
-                        <audio controls src="/api/audio/${file.filename}" style="height:30px;"></audio>
-                    `;
-                    savedList.appendChild(div);
-                });
-            } catch (error) {
-                console.error('Load saved failed:', error);
-            }
-        }
+    function updateSampleCount() {
+      document.getElementById('sampleCount').textContent = '已选 ' + selectedVoices.size;
+    }
 
-        // Show status message
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.className = `status status-${type}`;
-            status.textContent = message;
-        }
+    function previewVoice(ev, id) {
+      ev.stopPropagation();
+      const q = activeQQ ? ('?qq=' + encodeURIComponent(activeQQ)) : '';
+      const url = '/api/voice/' + encodeURIComponent(id) + q;
+      if (previewAudio) { previewAudio.pause(); }
+      previewAudio = new Audio(url);
+      previewAudio.play().catch(() => showToast('无法播放样本', true));
+    }
 
-        // Play voice file directly
-        function playVoice(category, filename) {
-            const voiceId = `${category}:${filename}`;
-            const url = `/api/voice/${encodeURIComponent(voiceId)}`;
-            const audioPlayer = document.getElementById('audioPlayer');
-            audioPlayer.src = url;
-            document.getElementById('playerCard').style.display = 'block';
-            audioPlayer.play();
-            showStatus(`正在播放: ${filename}`, 'info');
-        }
-    </script>
+    // ── generate ───────────────────────────────────────────
+    async function generateSpeech() {
+      const text = document.getElementById('textInput').value.trim();
+      if (!text) return showStatus('请输入要合成的文本', 'error');
+
+      const isCloud = currentProvider === 'dashscope';
+      let cloudVoice = null;
+      if (isCloud) {
+        cloudVoice = (document.getElementById('cloudVoiceSelect') || {}).value || '';
+        if (!cloudVoice) return showStatus('请选择一个云端音色（或先配置 API Key）', 'error');
+      } else {
+        if (!selectedVoices.size) return showStatus('请至少选择一个语音样本', 'error');
+      }
+
+      const btn = document.getElementById('genBtn');
+      btn.disabled = true;
+      document.getElementById('vu').classList.add('active');
+      document.getElementById('resultBox').style.display = 'none';
+      showStatus('正在合成…', 'info');
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            text,
+            provider: currentProvider,
+            voice: isCloud ? cloudVoice : null,
+            voice_ids: isCloud ? [] : Array.from(selectedVoices),
+            qq: activeQQ,
+            model: isCloud ? null : document.getElementById('modelSelect').value,
+            language: document.getElementById('langSelect').value || 'auto',
+            prompt_text: document.getElementById('promptText').value.trim() || null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '合成失败');
+
+        currentFilename = data.filename;
+        const audio = document.getElementById('resultAudio');
+        audio.src = data.url + '?t=' + Date.now();
+        document.getElementById('resultBox').style.display = 'block';
+        document.getElementById('resultMeta').textContent =
+          `${data.duration}s · ${(data.size/1024).toFixed(0)}KB · ${data.model} · ${data.samples_used} 个样本`;
+        showStatus('合成完成 ✓', 'success');
+      } catch (e) {
+        showStatus('合成失败：' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        document.getElementById('vu').classList.remove('active');
+      }
+    }
+
+    // ── save / saved list ──────────────────────────────────
+    async function saveAudio() {
+      if (!currentFilename) return;
+      try {
+        const res = await fetch('/api/save/' + currentFilename, {method: 'POST'});
+        if (!res.ok) throw new Error();
+        showToast('已保存到收藏 ✓');
+        loadSaved();
+      } catch (e) {
+        showToast('保存失败', true);
+      }
+    }
+
+    async function loadSaved() {
+      const box = document.getElementById('savedContainer');
+      try {
+        const res = await fetch('/api/saved').then(r => r.json());
+        const files = res.files || [];
+        if (!files.length) { box.innerHTML = '<div class="empty">尚无保存的语音。</div>'; return; }
+        box.innerHTML = files.map(f => `
+          <div class="saved-item">
+            <span class="t">${f.time}</span>
+            <audio controls src="/api/audio/${f.filename}"></audio>
+            <span class="meta">${(f.size/1024).toFixed(0)}KB</span>
+          </div>`).join('');
+      } catch (e) {
+        box.innerHTML = '<div class="empty">加载失败。</div>';
+      }
+    }
+
+    // ── ui helpers ─────────────────────────────────────────
+    function showStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status show ' + type;
+    }
+    let toastTimer = null;
+    function showToast(msg, err) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (err ? ' err' : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
+    }
+
+    init();
+  </script>
 </body>
 </html>

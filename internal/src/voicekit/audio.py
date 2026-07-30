@@ -42,6 +42,43 @@ def load_wav_fixed(wav: PathLike, target_sr: int, min_sr: int = 16000):
     return torch.from_numpy(speech).unsqueeze(0)
 
 
+def concat_wavs(
+    wav_paths,
+    out_path: PathLike,
+    target_sr: int = 16000,
+    gap_ms: int = 200,
+) -> Path:
+    """Concatenate several WAV files into one mono ``target_sr`` file.
+
+    Used to build a richer reference clip from multiple selected voice
+    samples. Each source is mono-ized and resampled to ``target_sr``; a short
+    silence gap is inserted between clips. Returns the output path.
+    """
+    import soundfile as sf
+    from scipy import signal as sig
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    gap = np.zeros(int(target_sr * gap_ms / 1000), dtype=np.float32)
+
+    chunks = []
+    for i, p in enumerate(wav_paths):
+        speech, sr = sf.read(str(p))
+        if speech.dtype != np.float32:
+            speech = speech.astype(np.float32)
+        if len(speech.shape) > 1:
+            speech = speech[:, 0]
+        if sr != target_sr:
+            speech = sig.resample(speech, int(len(speech) * target_sr / sr)).astype(np.float32)
+        if i > 0:
+            chunks.append(gap)
+        chunks.append(speech)
+
+    combined = np.concatenate(chunks) if chunks else np.zeros(1, dtype=np.float32)
+    sf.write(str(out_path), combined, target_sr)
+    return out_path
+
+
 def silk_to_wav(
     silk_path: PathLike,
     wav_path: PathLike,

@@ -16,12 +16,27 @@ from .audio import load_wav_fixed
 from .config import Config
 
 
-class CosyVoiceEngine:
+from .tts_base import TTSProvider
+
+
+class CosyVoiceEngine(TTSProvider):
     """Lazy wrapper around CosyVoice's AutoModel driven by :class:`Config`."""
 
-    def __init__(self, config: Config):
+    # Local zero-shot cloning always needs a reference sample at synth time.
+    needs_reference = True
+
+    def __init__(self, config: Config, model_dir=None):
         self.config = config
         self._model = None
+        self._model_dir = Path(model_dir) if model_dir else config.model_dir
+
+    @property
+    def name(self) -> str:
+        return self._model_dir.name
+
+    @property
+    def model_dir(self) -> Path:
+        return self._model_dir
 
     # ---- setup -----------------------------------------------------------
     def _prepare_paths(self) -> None:
@@ -52,7 +67,7 @@ class CosyVoiceEngine:
 
         from cosyvoice.cli.cosyvoice import AutoModel
 
-        self._model = AutoModel(model_dir=str(self.config.model_dir))
+        self._model = AutoModel(model_dir=str(self._model_dir))
         return self._model
 
     @property
@@ -66,8 +81,20 @@ class CosyVoiceEngine:
         reference_wav,
         prompt_text: Optional[str] = None,
         stream: bool = False,
+        language_tag: str = "",
     ) -> Iterator:
-        """Yield zero-shot cloned speech results for ``text``."""
+        """Yield cloned speech results for ``text``.
+
+        With no ``language_tag`` this is standard zero-shot cloning (language
+        follows the reference + prompt text). With a CosyVoice language tag
+        (e.g. ``<|en|>``) it switches to cross-lingual inference so the output
+        language matches the requested one while keeping the reference timbre.
+        """
+        if language_tag:
+            yield from self.model.inference_cross_lingual(
+                language_tag + text, str(reference_wav), stream=stream
+            )
+            return
         prompt_text = prompt_text or self.config.default_prompt_text
         yield from self.model.inference_zero_shot(
             text, prompt_text, str(reference_wav), stream=stream
@@ -79,13 +106,39 @@ class CosyVoiceEngine:
         reference_wav,
         output_path,
         prompt_text: Optional[str] = None,
+        language_tag: str = "",
     ) -> Path:
         """Synthesize ``text`` in the reference voice and write a WAV file."""
         import soundfile as sf
 
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        for result in self.zero_shot(text, reference_wav, prompt_text):
+        for result in self.zero_shot(text, reference_wav, prompt_text,
+                                     language_tag=language_tag):
             audio = result["tts_speech"].numpy().squeeze()
             sf.write(str(output_path), audio, self.sample_rate)
         return output_path
+
+    def synthesize_to_file(
+        self,
+        text: str,
+        output_path,
+        *,
+        reference_wav=None,
+        voice: Optional[str] = None,
+        prompt_text: Optional[str] = None,
+        language: Optional[str] = None,
+    ) -> Path:
+        """:class:`TTSProvider` entry point — clone ``text`` in the reference voice.
+
+        Maps the language *code* to a CosyVoice tag via the config and delegates
+        to :meth:`clone_to_file`. ``voice`` is ignored (local cloning uses the
+        reference sample, not a pre-registered voice id).
+        """
+        if reference_wav is None:
+            raise ValueError("本地克隆需要参考语音样本（reference_wav）。")
+        language_tag = self.config.language_tag(language)
+        return self.clone_to_file(
+            text, reference_wav, output_path, prompt_text,
+            language_tag=language_tag,
+        )
