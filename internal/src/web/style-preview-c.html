@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>风格C · 终端极客 · Terminal Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── 风格C：终端极客 · 绿光黑底 · Cyber / Pro ── */
+:root {
+  --bg: #060809;
+  --surface-1: #0c0f0e;
+  --surface-2: #121615;
+  --surface-3: #161c1a;
+  --border: rgba(0,255,140,0.08);
+  --border-hi: rgba(0,255,140,0.2);
+  --accent: #00e87a;
+  --accent-dim: rgba(0,232,122,0.15);
+  --accent-glow: rgba(0,232,122,0.4);
+  --amber: #f5a623;
+  --red: #ff4757;
+  --blue: #4895ff;
+  --text-1: #d4f0e0;
+  --text-2: #6a8f7a;
+  --text-3: #3d5448;
+  --font: 'DM Sans', 'PingFang SC', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased;
+  background:
+    linear-gradient(180deg, rgba(0,232,122,0.03) 0%, transparent 40%),
+    var(--bg);
+}
+/* scanline overlay */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);}
+
+/* topbar */
+.topbar{display:flex;align-items:center;gap:20px;padding:0 28px;height:52px;
+  background:var(--surface-1);border-bottom:1px solid var(--border-hi);position:sticky;top:0;z-index:20;}
+.brand{font-family:var(--mono);font-size:0.92rem;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:10px;color:var(--accent);}
+.brand::before{content:">";color:var(--text-3);}
+.status-led{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:0.65rem;color:var(--text-3);letter-spacing:1px;}
+.led{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent-glow);animation:blink 2s infinite;}
+@keyframes blink{0%,90%,100%{opacity:1}95%{opacity:0.2}}
+.nav{display:flex;gap:0;margin-left:16px;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.nav a{font-family:var(--mono);font-size:0.68rem;letter-spacing:0.5px;color:var(--text-2);text-decoration:none;padding:6px 12px;border-right:1px solid var(--border);transition:all 0.12s;}
+.nav a:last-child{border-right:none;}
+.nav a:hover{background:var(--accent-dim);color:var(--accent);}
+.nav a.active{background:var(--accent-dim);color:var(--accent);}
+.spacer{flex:1;}
+.sys-info{font-family:var(--mono);font-size:0.65rem;color:var(--text-3);display:flex;align-items:center;gap:14px;}
+.user-box{font-family:var(--mono);font-size:0.75rem;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border-hi);padding:6px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;}
+.user-box::before{content:"user@";color:var(--text-3);}
+
+/* layout */
+.wrap{max-width:1060px;margin:0 auto;padding:32px 28px;position:relative;z-index:2;}
+.page-title{margin-bottom:28px;border-left:3px solid var(--accent);padding-left:16px;}
+.page-title .cmd{font-family:var(--mono);font-size:0.68rem;color:var(--text-3);margin-bottom:6px;letter-spacing:1px;}
+.page-title h1{font-size:1.55rem;font-weight:500;letter-spacing:-0.3px;color:var(--text-1);}
+.page-title h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 20px var(--accent-glow);}
+.page-title p{font-size:0.82rem;color:var(--text-2);margin-top:8px;font-family:var(--mono);}
+.grid{display:grid;gap:14px;}
+@media(min-width:860px){.grid.cols-2{grid-template-columns:1fr 1fr;}}
+
+/* panel */
+.panel{background:var(--surface-1);border:1px solid var(--border-hi);border-radius:0;padding:0;overflow:hidden;}
+.panel-bar{display:flex;align-items:center;gap:0;background:var(--surface-2);border-bottom:1px solid var(--border-hi);padding:0;}
+.panel-bar-dots{display:flex;gap:6px;padding:10px 14px;border-right:1px solid var(--border);}
+.panel-bar-dots span{width:9px;height:9px;border-radius:50%;}
+.panel-bar-dots span:nth-child(1){background:var(--red);}
+.panel-bar-dots span:nth-child(2){background:var(--amber);}
+.panel-bar-dots span:nth-child(3){background:var(--accent);}
+.panel-bar-title{font-family:var(--mono);font-size:0.72rem;color:var(--text-2);padding:10px 16px;flex:1;}
+.panel-bar-num{font-family:var(--mono);font-size:0.65rem;color:var(--text-3);padding:10px 14px;border-left:1px solid var(--border);}
+.panel-body{padding:20px;}
+
+/* field */
+.field{margin-bottom:16px;}
+.field-label{display:block;font-family:var(--mono);font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-3);margin-bottom:7px;}
+.field-label::before{content:"# ";color:var(--accent);opacity:0.5;}
+select,input[type="text"],textarea{width:100%;background:var(--bg);border:1px solid var(--border-hi);border-radius:0;color:var(--text-1);font-family:var(--mono);font-size:0.85rem;padding:10px 13px;transition:border-color 0.15s;}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+textarea{min-height:95px;resize:vertical;line-height:1.6;}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='none' stroke='%2300e87a' stroke-width='2'%3E%3Cpath d='M1 3l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;cursor:pointer;}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;font-family:var(--mono);font-size:0.75rem;letter-spacing:0.5px;border-radius:0;padding:10px 18px;transition:all 0.12s;}
+.btn-primary{background:var(--accent);color:#020a05;font-weight:700;}
+.btn-primary:hover{background:#00ff8c;box-shadow:0 0 16px var(--accent-glow);}
+.btn-ghost{background:transparent;color:var(--text-2);border:1px solid var(--border-hi);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-sm{padding:7px 12px;font-size:0.7rem;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* voice grid */
+.voice-grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));}
+.voice-card{background:var(--bg);border:1px solid var(--border);padding:11px 12px;cursor:pointer;transition:all 0.12s;position:relative;}
+.voice-card:hover{border-color:var(--border-hi);}
+.voice-card.selected{border-color:var(--accent);background:var(--accent-dim);}
+.voice-card.selected::before{content:"[x]";position:absolute;top:8px;right:8px;font-family:var(--mono);font-size:0.62rem;color:var(--accent);}
+.vc-name{font-family:var(--mono);font-size:0.76rem;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:24px;}
+.vc-meta{font-size:0.64rem;color:var(--text-3);margin-top:5px;font-family:var(--mono);}
+.wave{display:flex;align-items:flex-end;gap:2px;height:16px;margin-top:9px;}
+.wave i{flex:1;border-radius:0;background:var(--border-hi);}
+.voice-card.selected .wave i{background:var(--accent);opacity:0.7;}
+
+/* status */
+.term-output{font-family:var(--mono);font-size:0.73rem;color:var(--text-2);padding:12px 14px;background:var(--bg);border:1px solid var(--border);margin-top:14px;line-height:1.8;}
+.term-output .ok{color:var(--accent);}
+.term-output .label{color:var(--text-3);}
+
+/* count */
+.count-tag{font-family:var(--mono);font-size:0.65rem;color:var(--accent);border:1px solid var(--border-hi);padding:3px 8px;}
+
+/* preview tag */
+.preview-tag{font-family:var(--mono);font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-3);border:1px solid var(--border-hi);padding:4px 10px;margin-bottom:22px;display:inline-block;}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">CosyVoice_Studio</div>
+  <div class="status-led"><span class="led"></span>ONLINE</div>
+  <nav class="nav">
+    <a href="#" class="active">工作室</a>
+    <a href="#">管理台</a>
+    <a href="#">自动化</a>
+    <a href="#">模型</a>
+    <a href="#">陪伴</a>
+  </nav>
+  <div class="spacer"></div>
+  <div class="sys-info">
+    <span>MEM 2.1G</span>
+    <span>CPU 12%</span>
+  </div>
+  <div class="user-box">123···7824 ▾</div>
+</header>
+
+<main class="wrap">
+  <div class="preview-tag">Style C · 终端极客</div>
+  <div class="page-title">
+    <div class="cmd">$ cosyvoice --studio --mode clone</div>
+    <h1>把文字，说成<em>你的声音</em>。</h1>
+    <p>// 选择模型与语音样本，输入文本，即刻合成克隆语音。</p>
+  </div>
+
+  <div class="grid cols-2">
+    <div class="panel">
+      <div class="panel-bar">
+        <div class="panel-bar-dots"><span></span><span></span><span></span></div>
+        <div class="panel-bar-title">音色源 / voice_source.cfg</div>
+        <div class="panel-bar-num">01</div>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label class="field-label">提供方</label>
+          <select><option>本地模型</option><option>阿里云百炼（云端）</option></select>
+        </div>
+        <div class="field">
+          <label class="field-label">克隆模型</label>
+          <select><option>CosyVoice-300M · 默认</option></select>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <label class="field-label" style="margin:0">语音样本</label>
+          <span class="count-tag">selected: 2</span>
+        </div>
+        <div class="voice-grid">
+          <div class="voice-card selected">
+            <div class="vc-name">8a3f2b1c.wav</div>
+            <div class="vc-meta">dur:3.2s  sz:51K</div>
+            <div class="wave"><i style="height:40%"></i><i style="height:70%"></i><i style="height:55%"></i><i style="height:85%"></i><i style="height:45%"></i><i style="height:65%"></i><i style="height:30%"></i></div>
+          </div>
+          <div class="voice-card">
+            <div class="vc-name">9d4e1a7f.wav</div>
+            <div class="vc-meta">dur:4.1s  sz:67K</div>
+            <div class="wave"><i style="height:55%"></i><i style="height:35%"></i><i style="height:80%"></i><i style="height:50%"></i><i style="height:75%"></i><i style="height:40%"></i><i style="height:60%"></i></div>
+          </div>
+          <div class="voice-card selected">
+            <div class="vc-name">c2b9e3d1.wav</div>
+            <div class="vc-meta">dur:2.8s  sz:46K</div>
+            <div class="wave"><i style="height:65%"></i><i style="height:45%"></i><i style="height:90%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:75%"></i><i style="height:50%"></i></div>
+          </div>
+          <div class="voice-card">
+            <div class="vc-name">f7a2c8e4.wav</div>
+            <div class="vc-meta">dur:5.5s  sz:88K</div>
+            <div class="wave"><i style="height:30%"></i><i style="height:75%"></i><i style="height:50%"></i><i style="height:65%"></i><i style="height:85%"></i><i style="height:40%"></i><i style="height:55%"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-bar">
+        <div class="panel-bar-dots"><span></span><span></span><span></span></div>
+        <div class="panel-bar-title">合成文本 / synthesis_input.txt</div>
+        <div class="panel-bar-num">02</div>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label class="field-label">目标文本</label>
+          <textarea>你好啊，最近还好吗？好久不见了。</textarea>
+        </div>
+        <div class="field">
+          <label class="field-label">合成语言</label>
+          <select><option>auto (跟随样本)</option><option>zh-CN</option><option>en-US</option></select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary">▶ RUN_CLONE</button>
+          <button class="btn btn-ghost btn-sm">SAVE</button>
+        </div>
+        <div class="term-output">
+          <div><span class="label">status: </span><span class="ok">SUCCESS</span></div>
+          <div><span class="label">output: </span>2.4s · 38KB</div>
+          <div><span class="label">model: </span>CosyVoice-300M</div>
+          <div><span class="label">samples: </span>2 files merged</div>
+        </div>
+        <audio controls style="width:100%;margin-top:12px;filter:hue-rotate(100deg) saturate(0.6)"></audio>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>风格A · 极简暗黑 · Minimal Dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── 风格A：极简暗黑 · 冷色调 · 无装饰主义 ── */
+:root {
+  --bg: #0a0a0f;
+  --surface-1: #111116;
+  --surface-2: #18181f;
+  --surface-3: #1e1e28;
+  --border: rgba(255,255,255,0.07);
+  --border-hi: rgba(255,255,255,0.14);
+  --accent: #7c6af7;
+  --accent-glow: rgba(124,106,247,0.3);
+  --accent-2: #3ecfcf;
+  --text-1: #f0f0f5;
+  --text-2: #888898;
+  --text-3: #55555f;
+  --red: #f06070;
+  --green: #3ed68a;
+  --font: 'Inter', 'PingFang SC', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+/* topbar */
+.topbar{display:flex;align-items:center;gap:20px;padding:0 28px;height:56px;background:rgba(10,10,15,0.9);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);position:sticky;top:0;z-index:20;}
+.brand{font-family:var(--mono);font-size:0.88rem;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--text-1);}
+.brand span{color:var(--accent);}
+.nav{display:flex;gap:2px;margin-left:12px;}
+.nav a{font-family:var(--mono);font-size:0.72rem;letter-spacing:0.5px;color:var(--text-3);text-decoration:none;padding:6px 12px;border-radius:6px;transition:all 0.15s;}
+.nav a:hover{color:var(--text-1);background:var(--surface-2);}
+.nav a.active{color:var(--accent);background:rgba(124,106,247,0.1);}
+.spacer{flex:1;}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:0.78rem;cursor:pointer;}
+.user-chip .av{width:22px;height:22px;border-radius:5px;background:var(--accent);display:grid;place-items:center;font-size:0.62rem;font-weight:600;color:#fff;}
+
+/* layout */
+.wrap{max-width:1060px;margin:0 auto;padding:36px 28px;}
+.page-title{margin-bottom:28px;}
+.page-title h1{font-size:1.6rem;font-weight:600;letter-spacing:-0.5px;color:var(--text-1);}
+.page-title h1 em{color:var(--accent);font-style:normal;}
+.page-title p{font-size:0.85rem;color:var(--text-2);margin-top:8px;line-height:1.6;}
+.grid{display:grid;gap:16px;}
+@media(min-width:860px){.grid.cols-2{grid-template-columns:1fr 1fr;}}
+
+/* panel */
+.panel{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:22px;}
+.panel-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.panel-label{font-family:var(--mono);font-size:0.68rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-3);background:var(--surface-2);border:1px solid var(--border);padding:4px 8px;border-radius:4px;}
+.panel-title{font-size:0.98rem;font-weight:500;color:var(--text-1);}
+.panel-title small{display:block;font-size:0.72rem;font-weight:400;color:var(--text-3);margin-top:2px;}
+
+/* field */
+.field{margin-bottom:16px;}
+.field-label{display:block;font-family:var(--mono);font-size:0.68rem;letter-spacing:1px;text-transform:uppercase;color:var(--text-3);margin-bottom:7px;}
+select,input[type="text"],textarea{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font);font-size:0.9rem;padding:10px 13px;transition:border-color 0.15s;}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent);}
+textarea{min-height:100px;resize:vertical;line-height:1.6;}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='none' stroke='%237c6af7' stroke-width='2'%3E%3Cpath d='M1 3l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;cursor:pointer;}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;font-family:var(--mono);font-size:0.78rem;letter-spacing:0.5px;border-radius:8px;padding:10px 18px;transition:all 0.15s;}
+.btn-primary{background:var(--accent);color:#fff;font-weight:500;}
+.btn-primary:hover{background:#9080ff;box-shadow:0 0 20px var(--accent-glow);}
+.btn-ghost{background:transparent;color:var(--text-2);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--border-hi);color:var(--text-1);}
+.btn-sm{padding:7px 12px;font-size:0.72rem;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+
+/* voice grid */
+.voice-grid{display:grid;gap:9px;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));}
+.voice-card{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:12px 13px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden;}
+.voice-card:hover{border-color:var(--border-hi);}
+.voice-card.selected{border-color:var(--accent);background:rgba(124,106,247,0.08);}
+.voice-card.selected::after{content:"✓";position:absolute;top:8px;right:9px;width:18px;height:18px;border-radius:4px;background:var(--accent);color:#fff;font-size:0.62rem;font-weight:700;display:grid;place-items:center;}
+.vc-name{font-family:var(--mono);font-size:0.79rem;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:20px;}
+.vc-meta{font-size:0.66rem;color:var(--text-3);margin-top:5px;}
+.wave{display:flex;align-items:flex-end;gap:2px;height:18px;margin-top:9px;}
+.wave i{flex:1;border-radius:1px;background:var(--border-hi);}
+.voice-card.selected .wave i{background:var(--accent);opacity:0.7;}
+
+/* status badges */
+.badge{font-family:var(--mono);font-size:0.63rem;letter-spacing:0.5px;padding:3px 8px;border-radius:4px;display:inline-flex;align-items:center;gap:5px;}
+.badge::before{content:"";width:5px;height:5px;border-radius:50%;}
+.badge.ok{background:rgba(62,214,138,0.1);color:var(--green);}
+.badge.ok::before{background:var(--green);}
+.badge.err{background:rgba(240,96,112,0.1);color:var(--red);}
+.badge.err::before{background:var(--red);}
+.badge.run{background:rgba(124,106,247,0.12);color:var(--accent);}
+.badge.run::before{background:var(--accent);animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface-3);border:1px solid var(--border-hi);color:var(--text-1);padding:10px 18px;border-radius:8px;font-family:var(--mono);font-size:0.78rem;}
+
+/* preview tag */
+.preview-tag{font-family:var(--mono);font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-3);border:1px dashed var(--border-hi);padding:4px 10px;border-radius:4px;margin-bottom:24px;display:inline-block;}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span>●</span> CosyVoice</div>
+  <nav class="nav">
+    <a href="#" class="active">工作室</a>
+    <a href="#">管理台</a>
+    <a href="#">自动化</a>
+    <a href="#">模型</a>
+    <a href="#">陪伴</a>
+  </nav>
+  <div class="spacer"></div>
+  <div class="user-chip">
+    <span class="av">24</span>
+    <span>123···7824</span>
+    <span style="color:var(--text-3)">▾</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="preview-tag">Style A · 极简暗黑</div>
+  <div class="page-title">
+    <h1>把文字，说成<em>你的声音</em>。</h1>
+    <p>选择模型与语音样本，输入文本，即刻合成克隆语音。</p>
+  </div>
+
+  <div class="grid cols-2">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-label">01</span>
+        <div class="panel-title">音色源 <small>选择提供方与音色</small></div>
+      </div>
+      <div class="field">
+        <label class="field-label">提供方</label>
+        <select><option>本地模型</option><option>阿里云百炼（云端）</option></select>
+      </div>
+      <div class="field">
+        <label class="field-label">克隆模型</label>
+        <select><option>CosyVoice-300M · 默认</option></select>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <label class="field-label" style="margin:0">语音样本</label>
+        <span class="badge run">已选 2</span>
+      </div>
+      <div class="voice-grid">
+        <div class="voice-card selected">
+          <div class="vc-name">8a3f2b1c.wav</div>
+          <div class="vc-meta">3.2s · 51KB</div>
+          <div class="wave"><i style="height:40%"></i><i style="height:70%"></i><i style="height:55%"></i><i style="height:85%"></i><i style="height:45%"></i><i style="height:65%"></i><i style="height:30%"></i></div>
+        </div>
+        <div class="voice-card">
+          <div class="vc-name">9d4e1a7f.wav</div>
+          <div class="vc-meta">4.1s · 67KB</div>
+          <div class="wave"><i style="height:55%"></i><i style="height:35%"></i><i style="height:80%"></i><i style="height:50%"></i><i style="height:75%"></i><i style="height:40%"></i><i style="height:60%"></i></div>
+        </div>
+        <div class="voice-card selected">
+          <div class="vc-name">c2b9e3d1.wav</div>
+          <div class="vc-meta">2.8s · 46KB</div>
+          <div class="wave"><i style="height:65%"></i><i style="height:45%"></i><i style="height:90%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:75%"></i><i style="height:50%"></i></div>
+        </div>
+        <div class="voice-card">
+          <div class="vc-name">f7a2c8e4.wav</div>
+          <div class="vc-meta">5.5s · 88KB</div>
+          <div class="wave"><i style="height:30%"></i><i style="height:75%"></i><i style="height:50%"></i><i style="height:65%"></i><i style="height:85%"></i><i style="height:40%"></i><i style="height:55%"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-label">02</span>
+        <div class="panel-title">合成文本 <small>输入要转换的内容</small></div>
+      </div>
+      <div class="field">
+        <label class="field-label">目标文本</label>
+        <textarea placeholder="输入想让声音说出的文字…">你好啊，最近还好吗？好久不见了。</textarea>
+      </div>
+      <div class="field">
+        <label class="field-label">合成语言</label>
+        <select><option>自动（跟随样本）</option><option>中文</option><option>English</option></select>
+      </div>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-primary">⏺ 开始克隆</button>
+        <button class="btn btn-ghost btn-sm">💾 保存到收藏</button>
+      </div>
+      <div style="margin-top:18px;display:flex;align-items:center;gap:10px;">
+        <span class="badge ok">合成完成</span>
+        <span style="font-family:var(--mono);font-size:0.7rem;color:var(--text-3)">2.4s · 38KB · CosyVoice-300M</span>
+      </div>
+      <audio controls style="width:100%;margin-top:12px;filter:hue-rotate(220deg)"></audio>
+    </div>
+  </div>
+</main>
+</body>
+</html>

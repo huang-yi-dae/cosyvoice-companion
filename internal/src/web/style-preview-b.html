@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>风格B · 玻璃质感 · Glass Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── 风格B：玻璃质感 · 暖橘光晕 · 柔和渐变 ── */
+:root {
+  --bg: #080a12;
+  --glow-a: rgba(255,130,60,0.18);
+  --glow-b: rgba(100,80,220,0.14);
+  --glass: rgba(255,255,255,0.04);
+  --glass-hi: rgba(255,255,255,0.08);
+  --border: rgba(255,255,255,0.08);
+  --border-hi: rgba(255,255,255,0.18);
+  --accent: #ff7c3a;
+  --accent-soft: rgba(255,124,58,0.2);
+  --accent-2: #a06aff;
+  --teal: #3dd6b8;
+  --text-1: #eeeaf4;
+  --text-2: #9990a8;
+  --text-3: #5a5568;
+  --red: #ff5f70;
+  --font: 'Sora', 'PingFang SC', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased;
+  background: radial-gradient(ellipse 900px 600px at 85% -5%, var(--glow-a), transparent 65%),
+              radial-gradient(ellipse 700px 500px at -5% 95%, var(--glow-b), transparent 60%),
+              #080a12;}
+
+/* topbar */
+.topbar{display:flex;align-items:center;gap:24px;padding:0 32px;height:60px;
+  background:rgba(8,10,18,0.7);border-bottom:1px solid var(--border);backdrop-filter:blur(20px) saturate(1.4);position:sticky;top:0;z-index:20;}
+.brand{font-family:var(--font);font-size:1rem;font-weight:600;letter-spacing:-0.3px;display:flex;align-items:center;gap:10px;}
+.brand-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent),0 0 28px rgba(255,124,58,0.4);}
+.nav{display:flex;gap:4px;margin-left:8px;}
+.nav a{font-family:var(--mono);font-size:0.71rem;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-3);text-decoration:none;padding:7px 13px;border-radius:20px;border:1px solid transparent;transition:all 0.2s;}
+.nav a:hover{color:var(--text-1);}
+.nav a.active{color:var(--accent);border-color:rgba(255,124,58,0.3);background:var(--accent-soft);}
+.spacer{flex:1;}
+.user-pill{display:flex;align-items:center;gap:9px;background:var(--glass);border:1px solid var(--border-hi);border-radius:24px;padding:8px 14px;cursor:pointer;backdrop-filter:blur(8px);}
+.user-av{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;font-size:0.6rem;font-weight:700;font-family:var(--mono);color:#fff;}
+
+/* layout */
+.wrap{max-width:1060px;margin:0 auto;padding:40px 32px;}
+.page-title{margin-bottom:32px;}
+.page-title h1{font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:600;letter-spacing:-1px;line-height:1.1;}
+.page-title h1 em{font-style:italic;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.page-title p{font-size:0.85rem;color:var(--text-2);margin-top:10px;line-height:1.7;max-width:55ch;}
+.grid{display:grid;gap:18px;}
+@media(min-width:860px){.grid.cols-2{grid-template-columns:1fr 1fr;}}
+
+/* panel - glass morphism */
+.panel{
+  background:linear-gradient(160deg, var(--glass-hi), var(--glass));
+  border:1px solid var(--border);border-radius:18px;padding:24px;
+  backdrop-filter:blur(12px);
+  box-shadow:0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  opacity:0;transform:translateY(16px);animation:rise 0.55s cubic-bezier(0.2,0.9,0.2,1) forwards;
+}
+.panel:nth-child(1){animation-delay:0.05s}
+.panel:nth-child(2){animation-delay:0.12s}
+@keyframes rise{to{opacity:1;transform:none}}
+.panel-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+.step-badge{font-family:var(--mono);font-size:0.67rem;letter-spacing:1.5px;padding:4px 9px;border-radius:6px;background:var(--accent-soft);color:var(--accent);border:1px solid rgba(255,124,58,0.25);}
+.panel-title{font-size:1.02rem;font-weight:500;}
+.panel-title small{display:block;font-size:0.71rem;font-weight:400;color:var(--text-3);margin-top:2px;}
+
+/* fields */
+.field{margin-bottom:16px;}
+.field-label{display:block;font-family:var(--mono);font-size:0.67rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;}
+select,input[type="text"],textarea{width:100%;background:rgba(0,0,0,0.35);border:1px solid var(--border);border-radius:10px;color:var(--text-1);font-family:var(--font);font-size:0.9rem;padding:11px 14px;transition:all 0.2s;backdrop-filter:blur(4px);}
+select:focus,input:focus,textarea:focus{outline:none;border-color:rgba(255,124,58,0.5);box-shadow:0 0 0 3px rgba(255,124,58,0.12);}
+textarea{min-height:100px;resize:vertical;line-height:1.65;}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='none' stroke='%23ff7c3a' stroke-width='2'%3E%3Cpath d='M1 3l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:36px;cursor:pointer;}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;font-family:var(--mono);font-size:0.78rem;border-radius:10px;padding:11px 20px;transition:all 0.2s;font-weight:500;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#d95b1a);color:#fff;box-shadow:0 6px 20px rgba(255,124,58,0.35);}
+.btn-primary:hover{box-shadow:0 8px 28px rgba(255,124,58,0.5);transform:translateY(-1px);}
+.btn-ghost{background:var(--glass);color:var(--text-2);border:1px solid var(--border-hi);}
+.btn-ghost:hover{color:var(--text-1);border-color:rgba(255,124,58,0.4);}
+.btn-sm{padding:8px 14px;font-size:0.72rem;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+
+/* voice grid */
+.voice-grid{display:grid;gap:9px;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));}
+.voice-card{background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:11px;padding:12px 13px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;}
+.voice-card::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent,rgba(255,255,255,0.02));pointer-events:none;}
+.voice-card:hover{border-color:var(--border-hi);transform:translateY(-2px);}
+.voice-card.selected{border-color:var(--accent);background:rgba(255,124,58,0.07);}
+.voice-card.selected::after{content:"✓";position:absolute;top:8px;right:9px;width:19px;height:19px;border-radius:50%;background:var(--accent);color:#fff;font-size:0.6rem;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 8px rgba(255,124,58,0.5);}
+.vc-name{font-family:var(--mono);font-size:0.79rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:22px;}
+.vc-meta{font-size:0.66rem;color:var(--text-3);margin-top:5px;}
+.wave{display:flex;align-items:flex-end;gap:2px;height:18px;margin-top:10px;}
+.wave i{flex:1;border-radius:1px;background:rgba(255,255,255,0.1);}
+.voice-card.selected .wave i{background:var(--accent);opacity:0.6;}
+
+/* status */
+.status-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:0.7rem;padding:5px 11px;border-radius:20px;}
+.status-chip.ok{background:rgba(61,214,184,0.1);color:var(--teal);border:1px solid rgba(61,214,184,0.25);}
+.status-chip.ok::before{content:"●";font-size:0.5rem;}
+
+/* preview tag */
+.preview-tag{font-family:var(--mono);font-size:0.62rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-3);border:1px dashed var(--border-hi);padding:5px 12px;border-radius:20px;margin-bottom:26px;display:inline-block;}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    CosyVoice
+  </div>
+  <nav class="nav">
+    <a href="#" class="active">工作室</a>
+    <a href="#">管理台</a>
+    <a href="#">自动化</a>
+    <a href="#">模型</a>
+    <a href="#">陪伴</a>
+  </nav>
+  <div class="spacer"></div>
+  <div class="user-pill">
+    <span class="user-av">24</span>
+    <span style="font-family:var(--mono);font-size:0.79rem;">123···7824</span>
+    <span style="color:var(--text-3);font-size:0.7rem;">▾</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="preview-tag">Style B · 玻璃质感</div>
+  <div class="page-title">
+    <h1>把文字，说成<em>你的声音</em>。</h1>
+    <p>选择模型与语音样本，输入文本，即刻合成克隆语音。</p>
+  </div>
+
+  <div class="grid cols-2">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="step-badge">01</span>
+        <div class="panel-title">音色源 <small>选择提供方与音色</small></div>
+      </div>
+      <div class="field">
+        <label class="field-label">提供方</label>
+        <select><option>本地模型</option><option>阿里云百炼（云端）</option></select>
+      </div>
+      <div class="field">
+        <label class="field-label">克隆模型</label>
+        <select><option>CosyVoice-300M · 默认</option></select>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <label class="field-label" style="margin:0">语音样本</label>
+        <span class="status-chip ok">已选 2</span>
+      </div>
+      <div class="voice-grid">
+        <div class="voice-card selected">
+          <div class="vc-name">8a3f2b1c.wav</div>
+          <div class="vc-meta">3.2s · 51KB</div>
+          <div class="wave"><i style="height:40%"></i><i style="height:70%"></i><i style="height:55%"></i><i style="height:85%"></i><i style="height:45%"></i><i style="height:65%"></i><i style="height:30%"></i></div>
+        </div>
+        <div class="voice-card">
+          <div class="vc-name">9d4e1a7f.wav</div>
+          <div class="vc-meta">4.1s · 67KB</div>
+          <div class="wave"><i style="height:55%"></i><i style="height:35%"></i><i style="height:80%"></i><i style="height:50%"></i><i style="height:75%"></i><i style="height:40%"></i><i style="height:60%"></i></div>
+        </div>
+        <div class="voice-card selected">
+          <div class="vc-name">c2b9e3d1.wav</div>
+          <div class="vc-meta">2.8s · 46KB</div>
+          <div class="wave"><i style="height:65%"></i><i style="height:45%"></i><i style="height:90%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:75%"></i><i style="height:50%"></i></div>
+        </div>
+        <div class="voice-card">
+          <div class="vc-name">f7a2c8e4.wav</div>
+          <div class="vc-meta">5.5s · 88KB</div>
+          <div class="wave"><i style="height:30%"></i><i style="height:75%"></i><i style="height:50%"></i><i style="height:65%"></i><i style="height:85%"></i><i style="height:40%"></i><i style="height:55%"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="step-badge">02</span>
+        <div class="panel-title">合成文本 <small>输入要转换的内容</small></div>
+      </div>
+      <div class="field">
+        <label class="field-label">目标文本</label>
+        <textarea>你好啊，最近还好吗？好久不见了。</textarea>
+      </div>
+      <div class="field">
+        <label class="field-label">合成语言</label>
+        <select><option>自动（跟随样本）</option><option>中文</option></select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary">⏺ 开始克隆</button>
+        <button class="btn btn-ghost btn-sm">💾 保存收藏</button>
+      </div>
+      <div style="margin-top:16px;">
+        <span class="status-chip ok">合成完成 · 2.4s · 38KB</span>
+      </div>
+      <audio controls style="width:100%;margin-top:12px;filter:hue-rotate(20deg) brightness(0.9)"></audio>
+    </div>
+  </div>
+</main>
+</body>
+</html>
