@@ -6,8 +6,17 @@
   <title>CosyVoice Studio · 克隆工作室</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/studio.css" />
+  <style>
+    .result-audio-wrap {
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px; margin-top: 12px;
+    }
+    .result-audio-wrap audio { margin-top: 0; }
+  </style>
 </head>
 <body>
   <!-- ── top bar ─────────────────────────────────────────────── -->
@@ -127,7 +136,7 @@
         <div id="resultBox" style="display:none; margin-top:16px;">
           <div class="divider"></div>
           <label class="field-label">合成结果</label>
-          <audio id="resultAudio" controls></audio>
+          <div class="result-audio-wrap"><audio id="resultAudio" controls></audio></div>
           <div class="btn-row" style="margin-top:12px;">
             <button class="btn btn-live btn-sm" onclick="saveAudio()">💾 保存到收藏</button>
             <span class="meta" id="resultMeta"></span>
@@ -137,7 +146,7 @@
     </div>
 
     <!-- 已保存 -->
-    <section class="panel" style="margin-top:20px;">
+    <section class="panel" style="margin-top:22px;">
       <div class="panel-head">
         <span class="step">03</span>
         <div class="panel-title">收藏夹
