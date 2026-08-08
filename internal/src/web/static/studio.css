@@ -592,3 +592,34 @@ audio {
   background-clip: content-box;
 }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ── 首次使用引导卡片 (onboarding) ───────────────────────────── */
+.onboard {
+  margin-bottom: 28px; padding: 22px 24px;
+  border: 1px solid var(--border-accent); border-radius: var(--radius);
+  background: linear-gradient(150deg, var(--accent-soft), var(--surface-1));
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.onboard-title { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
+.onboard-sub { color: var(--ink-dim); font-size: 0.84rem; margin-bottom: 18px; }
+.onboard-steps { display: grid; gap: 12px; }
+@media (min-width: 780px) { .onboard-steps { grid-template-columns: repeat(4, 1fr); } }
+.onboard-step {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px; border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface-2); text-decoration: none; color: inherit;
+  transition: border-color .15s, transform .15s;
+}
+.onboard-step:hover { border-color: var(--accent); transform: translateY(-2px); }
+.onboard-step .num {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--font-mono); font-size: 0.78rem;
+  color: var(--accent-hi); border: 1px solid var(--border-accent); background: var(--accent-soft);
+}
+.onboard-step .st { font-size: 0.86rem; font-weight: 600; margin-bottom: 3px; }
+.onboard-step .sd { font-size: 0.74rem; color: var(--ink-faint); line-height: 1.5; }
+.onboard-close {
+  float: right; cursor: pointer; border: none; background: none;
+  color: var(--ink-faint); font-size: 0.78rem;
+}
+.onboard-close:hover { color: var(--accent-hi); }
