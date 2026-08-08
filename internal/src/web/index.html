@@ -75,6 +75,19 @@
       <div class="active-user-chip" id="activeUserChip" hidden></div>
     </div>
 
+    <!-- 首次使用引导：仅在无用户/无样本时显示 -->
+    <div class="onboard" id="onboard" hidden>
+      <button class="onboard-close" type="button" onclick="dismissOnboard()">收起 ✕</button>
+      <div class="onboard-title">还差几步就能合成你的第一段语音</div>
+      <div class="onboard-sub" id="onboardSub">按顺序完成下面 4 步即可开始使用。</div>
+      <div class="onboard-steps">
+        <a class="onboard-step" href="/models"><span class="num">1</span><span><span class="st">下载模型</span><span class="sd">到「模型」页下载 CosyVoice-300M</span></span></a>
+        <a class="onboard-step" href="/pipeline"><span class="num">2</span><span><span class="st">跑流水线</span><span class="sd">到「自动化」解密并生成样本</span></span></a>
+        <a class="onboard-step" href="/manage"><span class="num">3</span><span><span class="st">确认数据</span><span class="sd">到「管理台」核对样本与人设</span></span></a>
+        <a class="onboard-step" href="/"><span class="num">4</span><span><span class="st">开始合成</span><span class="sd">回到这里，选样本 + 输入文本</span></span></a>
+      </div>
+    </div>
+
     <div class="grid cols-2">
       <!-- 左列：模型 + 样本 -->
       <section class="panel">
@@ -202,6 +215,34 @@
         chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
       } else { chip.hidden = true; }
     }
+    // ── 首次使用引导 ──────────────────────────────────────
+    const ONBOARD_DISMISS_KEY = 'cosyvoice_onboard_dismissed';
+    function dismissOnboard() {
+      const el = document.getElementById('onboard');
+      if (el) el.hidden = true;
+      try { localStorage.setItem(ONBOARD_DISMISS_KEY, '1'); } catch (e) {}
+    }
+    function maybeShowOnboard(reason) {
+      const el = document.getElementById('onboard');
+      if (!el) return;
+      // reason: 'no-user' 必显示（还没数据）；'no-voice' 仅在用户未手动收起时显示
+      let dismissed = false;
+      try { dismissed = localStorage.getItem(ONBOARD_DISMISS_KEY) === '1'; } catch (e) {}
+      const sub = document.getElementById('onboardSub');
+      if (reason === 'no-user') {
+        if (sub) sub.textContent = '还没有可用的用户数据，请从第 1 步开始。';
+        el.hidden = false;
+      } else if (reason === 'no-voice' && !dismissed) {
+        if (sub) sub.textContent = '当前用户还没有语音样本，先完成第 2 步生成克隆样本。';
+        el.hidden = false;
+      } else {
+        el.hidden = true;
+      }
+    }
+    function hideOnboard() {
+      const el = document.getElementById('onboard');
+      if (el) el.hidden = true;
+    }
 
     // ── state ──────────────────────────────────────────────
     let activeQQ = null;
@@ -311,6 +352,7 @@
         renderUserMenu();
         renderActiveUser();
         updateActiveUserChip(activeQQ);
+        if (!users.length) maybeShowOnboard('no-user');
       } catch (e) {
         showToast('加载用户失败', true);
       }
@@ -401,6 +443,7 @@
         const voices = res.voices || [];
         if (!voices.length) {
           box.innerHTML = '<div class="empty-cta"><div class="empty-title">该用户还没有语音样本。</div><div class="empty-actions"><a href="/pipeline">去自动化跑转码</a><button class="ghost" type="button" onclick="toggleUserMenu()">切换其它用户</button></div></div>';
+          maybeShowOnboard('no-voice');
           return;
         }
         const groups = {};
@@ -413,6 +456,7 @@
           html += '</div>';
         }
         box.innerHTML = html;
+        hideOnboard();
       } catch (e) {
         box.innerHTML = '<div class="empty">加载失败。</div>';
       }
