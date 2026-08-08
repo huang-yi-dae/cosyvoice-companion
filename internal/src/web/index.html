@@ -142,6 +142,7 @@
         <div class="field">
           <label class="field-label" for="textInput">目标文本</label>
           <textarea id="textInput" placeholder="输入想让声音说出的文字…（Ctrl / ⌘ + Enter 快速合成）"></textarea>
+          <div class="char-count" id="textCount">0 字</div>
         </div>
 
         <div class="field">
@@ -678,6 +679,19 @@
         generateSpeech();
       }
     });
+    // 实时字数反馈：接近/超过阈值给温和提示
+    const TEXT_SOFT_LIMIT = 200;
+    function updateTextCount() {
+      const ta = document.getElementById('textInput');
+      const el = document.getElementById('textCount');
+      if (!ta || !el) return;
+      const n = ta.value.length;
+      el.textContent = n + ' 字';
+      el.classList.toggle('over', n > TEXT_SOFT_LIMIT);
+      el.title = n > TEXT_SOFT_LIMIT ? '文本较长，合成会变慢，建议分段' : '';
+    }
+    document.getElementById('textInput').addEventListener('input', updateTextCount);
+    updateTextCount();
 
     init();
   </script>
