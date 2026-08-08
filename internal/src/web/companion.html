@@ -91,6 +91,7 @@
     <div class="page-head">
       <h1>与你在意的人<span class="em">对话</span>。</h1>
       <p>用聊天记录学到的语气（SystemPrompt）驱动角色扮演对话，回复再用克隆音色朗读出来。文本对话走阿里云百炼（需在 .env 配置 DASHSCOPE_API_KEY），语音合成沿用工作室的本地 / 云端设置。</p>
+      <div class="active-user-chip" id="activeUserChip" hidden></div>
     </div>
 
     <div class="cmp-layout">
@@ -154,6 +155,14 @@
     }
     function persistActiveQQ(qq) {
       try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
+      updateActiveUserChip(qq);
+    }
+    function updateActiveUserChip(qq) {
+      const chip = document.getElementById('activeUserChip');
+      if (!chip) return;
+      if (qq) { chip.textContent = '当前：QQ ' + qq; chip.hidden = false;
+        chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
+      } else { chip.hidden = true; }
     }
 
     async function init() {
@@ -174,6 +183,7 @@
         activeQQ = restoreActiveQQ(cfgRes, users);
         renderUserMenu();
         renderActiveUser();
+        updateActiveUserChip(activeQQ);
       } catch (e) { showToast('加载用户失败', true); }
     }
 

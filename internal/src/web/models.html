@@ -112,6 +112,7 @@
     <div class="page-head">
       <h1>选择并管理<span class="em">声音模型</span>。</h1>
       <p>提供 CosyVoice 全系列开源模型：从通用零样本到指令控制、低延迟与新一代 0.5B。已下载的可直接在工作室使用；未下载的会显示体积与预估下载时间，确认后按需从 ModelScope 拉取。</p>
+      <div class="active-user-chip" id="activeUserChip" hidden></div>
     </div>
 
     <div class="btn-row" style="margin-bottom:18px">
@@ -175,6 +176,14 @@
     }
     function persistActiveQQ(qq) {
       try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
+      updateActiveUserChip(qq);
+    }
+    function updateActiveUserChip(qq) {
+      const chip = document.getElementById('activeUserChip');
+      if (!chip) return;
+      if (qq) { chip.textContent = '当前：QQ ' + qq; chip.hidden = false;
+        chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
+      } else { chip.hidden = true; }
     }
 
     async function init() {
@@ -194,6 +203,7 @@
         activeQQ = restoreActiveQQ(cfgRes, users);
         renderUserMenu();
         renderActiveUser();
+        updateActiveUserChip(activeQQ);
       } catch (e) {
         showToast('加载用户失败', true);
       }
