@@ -141,7 +141,7 @@
 
         <div class="field">
           <label class="field-label" for="textInput">目标文本</label>
-          <textarea id="textInput" placeholder="输入想让声音说出的文字…"></textarea>
+          <textarea id="textInput" placeholder="输入想让声音说出的文字…（Ctrl / ⌘ + Enter 快速合成）"></textarea>
         </div>
 
         <div class="field">
@@ -670,6 +670,14 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
     }
+
+    // 快捷键：在文本框内 Ctrl/Cmd + Enter 触发合成
+    document.getElementById('textInput').addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        generateSpeech();
+      }
+    });
 
     init();
   </script>

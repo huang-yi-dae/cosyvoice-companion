@@ -393,6 +393,14 @@
       toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
     }
 
+    // 快捷键：在提示词文本框内 Ctrl/Cmd + S 保存（阻止浏览器默认保存对话框）
+    document.getElementById('promptText').addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        if (activeQQ) savePrompt();
+      }
+    });
+
     init();
   </script>
 </body>
