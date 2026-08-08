@@ -437,7 +437,7 @@
     // ── voices ─────────────────────────────────────────────
     async function loadVoices() {
       const box = document.getElementById('voiceContainer');
-      box.innerHTML = '<div class="empty">正在加载语音样本…</div>';
+      box.innerHTML = '<div class="skeleton-grid">' + Array.from({length:6}, () => '<div class="skeleton card"></div>').join('') + '</div>';
       try {
         const q = activeQQ ? ('?qq=' + encodeURIComponent(activeQQ)) : '';
         const res = await fetch('/api/voices' + q).then(r => r.json());
@@ -466,8 +466,10 @@
 
     function renderVoiceCard(v) {
       const isCloned = v.category === '克隆音色';
-      const bars = Array.from({length: 9}, () =>
-        `<i style="height:${20 + Math.random()*70}%"></i>`).join('');
+      // 装饰性律动条：固定对称图形（非真实音频波形），仅用于视觉节奏
+      const HEIGHTS = [30, 55, 80, 60, 95, 60, 80, 55, 30];
+      const bars = HEIGHTS.map((h, i) =>
+        `<i style="height:${h}%;animation-delay:${i * 0.08}s"></i>`).join('');
       const sel = selectedVoices.has(v.id) ? 'selected' : '';
       const safeId = v.id.replace(/'/g, "\\'");
       return `
@@ -479,7 +481,7 @@
             <button class="play-mini" data-preview-id="${encodeURIComponent(v.id)}"
                     title="试听原始样本" onclick="previewVoice(event, '${safeId}')">▶</button>
           </div>
-          <div class="wave">${bars}</div>
+          <div class="wave decorative" aria-hidden="true" title="装饰动画（非真实波形）">${bars}</div>
         </div>`;
     }
 

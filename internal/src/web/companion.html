@@ -278,7 +278,7 @@
     // ── voices ─────────────────────────────────────────────
     async function loadVoices() {
       const box = document.getElementById('voiceList');
-      box.innerHTML = '<div class="empty">正在加载语音样本…</div>';
+      box.innerHTML = Array.from({length:4}, () => '<div class="skeleton line"></div>').join('');
       try {
         const res = await fetch('/api/voices?qq=' + encodeURIComponent(activeQQ || '')).then(r => r.json());
         const voices = res.voices || [];
