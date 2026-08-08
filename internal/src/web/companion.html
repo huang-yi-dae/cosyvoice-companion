@@ -134,6 +134,18 @@
     let sending = false;
     let toastTimer = null;
 
+    // ── P2 · 跨页面记住当前用户（localStorage）─────────────
+    const ACTIVE_QQ_KEY = 'cosyvoice_active_qq';
+    function restoreActiveQQ(cfgRes, list) {
+      let remembered = null;
+      try { remembered = localStorage.getItem(ACTIVE_QQ_KEY); } catch (e) {}
+      if (remembered && list.some(u => String(u.qq) === String(remembered))) return remembered;
+      return cfgRes.active_qq || (list[0] && list[0].qq) || null;
+    }
+    function persistActiveQQ(qq) {
+      try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
+    }
+
     async function init() {
       await loadUsers();
       await loadProviders();
@@ -149,7 +161,7 @@
           fetch('/api/users').then(r => r.json()),
         ]);
         users = usersRes.users || [];
-        activeQQ = cfgRes.active_qq || (users[0] && users[0].qq) || null;
+        activeQQ = restoreActiveQQ(cfgRes, users);
         renderUserMenu();
         renderActiveUser();
       } catch (e) { showToast('加载用户失败', true); }
@@ -185,6 +197,7 @@
     async function switchUser(qq) {
       if (String(qq) === String(activeQQ)) { toggleUserMenu(); return; }
       activeQQ = qq;
+      persistActiveQQ(qq);
       selectedVoices.clear();
       toggleUserMenu();
       renderUserMenu();
