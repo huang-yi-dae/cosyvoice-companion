@@ -106,8 +106,9 @@
         <textarea id="promptText" style="min-height:260px" placeholder="请选择一个用户以加载提示词…"></textarea>
       </div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="savePrompt()">💾 保存</button>
+        <button class="btn btn-primary" id="promptSaveBtn" onclick="savePrompt()">💾 保存</button>
         <button class="btn btn-ghost" onclick="regeneratePrompt()">↻ 重新生成</button>
+        <span class="meta" id="promptDirtyHint" hidden style="color:var(--accent-hi)">● 有未保存的修改</span>
         <span class="meta">重新生成会根据该用户的真实文本消息统计语言风格</span>
       </div>
     </section>
@@ -203,6 +204,10 @@
     });
 
     async function selectUser(qq) {
+      if (promptDirty && String(qq) !== String(activeQQ)) {
+        if (!confirm('当前用户的提示词有未保存的修改，切换用户会丢失这些改动。\n\n确定切换？')) return;
+        setPromptDirty(false);
+      }
       activeQQ = qq;
       persistActiveQQ(qq);
       document.getElementById('userswitch').classList.remove('open');
@@ -250,6 +255,7 @@
         const res = await fetch(`/api/users/${encodeURIComponent(qq)}/prompt`).then(r => r.json());
         ta.value = res.content || '';
         document.getElementById('promptSource').textContent = sourceLabel(res.source);
+        setPromptDirty(false);
       } catch (e) {
         ta.value = '';
         showToast('加载提示词失败', true);
@@ -263,6 +269,21 @@
       return s || '—';
     }
 
+    // ── Prompt 未保存改动跟踪 ──────────────────────────────
+    let promptDirty = false;
+    function setPromptDirty(v) {
+      promptDirty = !!v;
+      const hint = document.getElementById('promptDirtyHint');
+      const btn = document.getElementById('promptSaveBtn');
+      if (hint) hint.hidden = !promptDirty;
+      if (btn) btn.classList.toggle('btn-attention', promptDirty);
+    }
+    // 输入即标记 dirty；离开页面前若有未保存改动则提示
+    document.getElementById('promptText').addEventListener('input', () => setPromptDirty(true));
+    window.addEventListener('beforeunload', (e) => {
+      if (promptDirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+
     async function savePrompt() {
       if (!activeQQ) return;
       try {
@@ -273,6 +294,7 @@
         });
         if (!res.ok) throw new Error();
         document.getElementById('promptSource').textContent = '已自定义';
+        setPromptDirty(false);
         showToast('提示词已保存 ✓');
       } catch (e) { showToast('保存失败', true); }
     }
@@ -288,6 +310,7 @@
         if (!res.ok) throw new Error(data.detail || '');
         document.getElementById('promptText').value = data.content || '';
         document.getElementById('promptSource').textContent = '已重新生成';
+        setPromptDirty(false);
         showToast('已重新生成 ✓');
       } catch (e) { showToast('重新生成失败', true); }
     }
