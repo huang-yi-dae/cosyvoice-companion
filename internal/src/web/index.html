@@ -573,6 +573,22 @@
       if (vuText) vuText.textContent = '正在合成，首次加载模型约需 1 分钟…';
     }
 
+    // 把常见后端错误归类为「原因 + 可操作建议」
+    function friendlyError(msg, isCloud) {
+      const m = String(msg || '');
+      if (/模型|model|未下载|not found|checkpoint/i.test(m))
+        return '合成失败：模型可能未下载或加载失败。请到「模型」页确认已下载所选模型。';
+      if (/样本|voice|参考音频|reference|prompt.*wav/i.test(m))
+        return '合成失败：语音样本无效或缺失。请换其它样本，或到「自动化」重新生成克隆样本。';
+      if (/api.?key|dashscope|云端|unauthorized|401/i.test(m))
+        return '合成失败：云端音色需要在 .env 配置 DASHSCOPE_API_KEY 后重试。';
+      if (/timeout|超时|time.?out/i.test(m))
+        return '合成失败：首次加载模型较慢导致超时，请稍候重试（本地模型加载约 1 分钟）。';
+      if (/显存|cuda|out of memory|oom/i.test(m))
+        return '合成失败：显存不足。可尝试更小的模型或缩短文本。';
+      return '合成失败：' + (m || '未知错误') + (isCloud ? '' : '（可到「模型」页确认模型状态）');
+    }
+
     async function generateSpeech() {
       const text = document.getElementById('textInput').value.trim();
       if (!text) return showStatus('请输入要合成的文本', 'error');
@@ -619,7 +635,7 @@
           `${data.duration}s · ${(data.size/1024).toFixed(0)}KB · ${data.model} · ${data.samples_used} 个样本`;
         showStatus('合成完成 ✓', 'success');
       } catch (e) {
-        showStatus('合成失败：' + e.message, 'error');
+        showStatus(friendlyError(e.message, isCloud), 'error');
       } finally {
         stopSynthTimer();
         btn.disabled = false;
