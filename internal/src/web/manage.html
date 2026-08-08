@@ -174,7 +174,7 @@
 
     function renderUserGrid() {
       const grid = document.getElementById('userGrid');
-      if (!users.length) { grid.innerHTML = '<div class="empty">未发现用户。</div>'; return; }
+      if (!users.length) { grid.innerHTML = '<div class="empty-cta"><div class="empty-title">还没有可管理的用户。</div><div class="empty-actions"><a href="/pipeline">去自动化跑一遍流水线</a></div></div>'; return; }
       grid.innerHTML = users.map(u => `
         <div class="voice-card ${String(u.qq) === String(activeQQ) ? 'selected' : ''}"
              onclick="selectUser('${u.qq}')">
@@ -212,7 +212,7 @@
         const res = await fetch(`/api/users/${encodeURIComponent(qq)}/messages`).then(r => r.json());
         const msgs = res.messages || [];
         document.getElementById('msgCount').textContent = res.count + ' 条';
-        if (!msgs.length) { box.innerHTML = '<div class="empty">该用户暂无语音消息。</div>'; return; }
+        if (!msgs.length) { box.innerHTML = '<div class="empty-cta"><div class="empty-title">该用户还没有语音消息。</div><div class="empty-actions"><a href="/pipeline">去自动化解密并导出</a></div></div>'; return; }
 
         const withWav = msgs.filter(m => m.has_wav).length;
         const rows = msgs.map(m => `

@@ -268,7 +268,7 @@
       try {
         const res = await fetch('/api/voices?qq=' + encodeURIComponent(activeQQ || '')).then(r => r.json());
         const voices = res.voices || [];
-        if (!voices.length) { box.innerHTML = '<div class="empty">该用户暂无语音样本。</div>'; return; }
+        if (!voices.length) { box.innerHTML = '<div class="empty-cta"><div class="empty-title">该用户还没有语音样本，将使用云端音色。</div><div class="empty-actions"><a href="/pipeline">去自动化生成克隆样本</a></div></div>'; return; }
         box.innerHTML = voices.map(v => {
           const id = escapeHtml(v.id);
           return `<label><input type="checkbox" value="${id}" onchange="toggleVoice('${id.replace(/'/g,"\\'")}', this.checked)"> ${escapeHtml(v.name || v.id)}</label>`;
