@@ -279,6 +279,8 @@
 
     async function regeneratePrompt() {
       if (!activeQQ) return;
+      const cur = (document.getElementById('promptText').value || '').trim();
+      if (cur && !confirm('重新生成会用统计结果覆盖当前提示词内容，未保存的手动修改将丢失。\n\n确定继续？')) return;
       showToast('正在根据聊天记录重新生成…');
       try {
         const res = await fetch(`/api/users/${encodeURIComponent(activeQQ)}/prompt/regenerate`, {method: 'POST'});
@@ -334,7 +336,12 @@
       if (!currentPaths.includes(p)) { currentPaths.push(p); renderPaths(); }
     }
 
-    function removePath(i) { currentPaths.splice(i, 1); renderPaths(); }
+    function removePath(i) {
+      const p = currentPaths[i];
+      if (!confirm('确定移除该知识库路径？\n\n' + (p || '') + '\n\n（移除后仍需点「保存」才会生效）')) return;
+      currentPaths.splice(i, 1);
+      renderPaths();
+    }
 
     async function savePaths() {
       if (!activeQQ) return;
