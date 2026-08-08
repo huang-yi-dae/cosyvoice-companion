@@ -130,6 +130,10 @@
           <small id="dlSub">—</small>
         </div>
       </div>
+      <div class="result-banner" id="dlResult" hidden>
+        <span class="rb-text" id="dlResultText"></span>
+        <button class="rb-close" type="button" onclick="document.getElementById('dlResult').hidden=true">知道了</button>
+      </div>
       <div class="dl-meta">
         <span>模型 <b id="dlName">—</b></span>
         <span>开始 <b id="dlStart">—</b></span>
@@ -366,8 +370,15 @@
         clearInterval(pollTimer);
         pollTimer = null;
         if (st.finished_at) {
-          if (st.ok) showToast('下载完成：' + (st.name || ''));
-          else showToast('下载失败：' + (st.error || st.name || ''), true);
+          const banner = document.getElementById('dlResult');
+          const txt = document.getElementById('dlResultText');
+          if (st.ok) {
+            showToast('下载完成：' + (st.name || ''));
+            if (banner && txt) { banner.className = 'result-banner ok'; txt.textContent = '✓ 下载完成：' + (st.name || '') + '　·　完成于 ' + (st.finished_at || ''); banner.hidden = false; }
+          } else {
+            showToast('下载失败：' + (st.error || st.name || ''), true);
+            if (banner && txt) { banner.className = 'result-banner err'; txt.textContent = '✕ 下载失败：' + (st.name || '') + '　·　' + (st.error || '请查看下方日志'); banner.hidden = false; }
+          }
           loadCatalog();
         }
       }

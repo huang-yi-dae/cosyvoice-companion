@@ -632,3 +632,17 @@ audio {
   0%,100% { box-shadow: 0 0 0 0 rgba(255,124,58,0.0); }
   50% { box-shadow: 0 0 0 4px rgba(255,124,58,0.28); }
 }
+
+/* 长任务完成态持久横幅 */
+.result-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  margin: 14px 0; padding: 12px 16px; border-radius: 12px;
+  font-size: 0.86rem; border: 1px solid var(--border);
+}
+.result-banner.ok { background: rgba(61,214,184,0.12); border-color: rgba(61,214,184,0.4); color: #3dd6b8; }
+.result-banner.err { background: rgba(255,84,112,0.12); border-color: rgba(255,84,112,0.4); color: #ff8598; }
+.result-banner .rb-close {
+  flex: none; cursor: pointer; border: 1px solid currentColor; background: none;
+  color: inherit; font-size: 0.76rem; padding: 4px 12px; border-radius: 999px; opacity: .85;
+}
+.result-banner .rb-close:hover { opacity: 1; }
