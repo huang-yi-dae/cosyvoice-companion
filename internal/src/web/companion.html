@@ -11,7 +11,11 @@
   <style>
     /* ── companion-specific components ────────────────────────── */
     .cmp-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
-    @media (max-width: 900px) { .cmp-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) {
+      .cmp-layout { grid-template-columns: 1fr; }
+      /* 单列后聊天窗口用更小的视口占比，避免小屏过高/过挤 */
+      .chat-window { height: calc(100vh - 220px); min-height: 360px; }
+    }
 
     .cmp-controls .field-label { margin-top: 14px; }
     .cmp-controls .field-label:first-child { margin-top: 0; }
