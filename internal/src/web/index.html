@@ -316,7 +316,7 @@
     function renderUserMenu() {
       const menu = document.getElementById('userMenu');
       if (!users.length) {
-        menu.innerHTML = '<div class="empty" style="padding:12px">未发现用户</div>';
+        menu.innerHTML = '<div class="empty" style="padding:12px">未发现用户，请先到<a href="/pipeline" style="color:var(--accent-hi)">自动化</a>跑一遍流水线</div>';
         return;
       }
       menu.innerHTML = users.map(u => `
@@ -390,7 +390,7 @@
         const res = await fetch('/api/voices' + q).then(r => r.json());
         const voices = res.voices || [];
         if (!voices.length) {
-          box.innerHTML = '<div class="empty">该用户暂无语音样本。</div>';
+          box.innerHTML = '<div class="empty-cta"><div class="empty-title">该用户还没有语音样本。</div><div class="empty-actions"><a href="/pipeline">去自动化跑转码</a><button class="ghost" type="button" onclick="toggleUserMenu()">切换其它用户</button></div></div>';
           return;
         }
         const groups = {};
@@ -590,7 +590,7 @@
       try {
         const res = await fetch('/api/saved').then(r => r.json());
         const files = res.files || [];
-        if (!files.length) { box.innerHTML = '<div class="empty">尚无保存的语音。</div>'; return; }
+        if (!files.length) { box.innerHTML = '<div class="empty-cta"><div class="empty-title">尚无保存的语音。</div><div class="empty-actions"><span class="empty" style="padding:0">合成语音后点「保存到收藏」即可留在这里</span></div></div>'; return; }
         box.innerHTML = files.map(f => `
           <div class="saved-item">
             <span class="t">${f.time}</span>
