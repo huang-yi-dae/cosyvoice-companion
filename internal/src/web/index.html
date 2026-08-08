@@ -72,6 +72,7 @@
     <div class="page-head">
       <h1>把文字，说成<span class="em">你的声音</span>。</h1>
       <p>选择模型与语音样本，输入文本，即刻合成克隆语音。多选样本会自动拼接为更丰富的参考音色。</p>
+      <div class="active-user-chip" id="activeUserChip" hidden></div>
     </div>
 
     <div class="grid cols-2">
@@ -192,6 +193,14 @@
     }
     function persistActiveQQ(qq) {
       try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
+      updateActiveUserChip(qq);
+    }
+    function updateActiveUserChip(qq) {
+      const chip = document.getElementById('activeUserChip');
+      if (!chip) return;
+      if (qq) { chip.textContent = '当前：QQ ' + qq; chip.hidden = false;
+        chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
+      } else { chip.hidden = true; }
     }
 
     // ── state ──────────────────────────────────────────────
@@ -301,6 +310,7 @@
         activeQQ = restoreActiveQQ(cfgRes, users);
         renderUserMenu();
         renderActiveUser();
+        updateActiveUserChip(activeQQ);
       } catch (e) {
         showToast('加载用户失败', true);
       }

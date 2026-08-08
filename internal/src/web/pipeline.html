@@ -94,6 +94,7 @@
     <div class="page-head">
       <h1>一键跑完<span class="em">解密到克隆</span>。</h1>
       <p>除登录 QQ 外，提取密钥、解密数据库、导出与清洗记录、转换语音、生成角色扮演 Agent 全流程自动执行。遇到需要人工的步骤会暂停并提示，处理好后可再次运行继续。</p>
+      <div class="active-user-chip" id="activeUserChip" hidden></div>
     </div>
 
     <div class="grid cols-2">
@@ -185,6 +186,14 @@
     }
     function persistActiveQQ(qq) {
       try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
+      updateActiveUserChip(qq);
+    }
+    function updateActiveUserChip(qq) {
+      const chip = document.getElementById('activeUserChip');
+      if (!chip) return;
+      if (qq) { chip.textContent = '当前：QQ ' + qq; chip.hidden = false;
+        chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
+      } else { chip.hidden = true; }
     }
 
     const STATE_LABEL = {
@@ -208,6 +217,7 @@
         activeQQ = restoreActiveQQ(cfgRes, users);
         renderUserMenu();
         renderActiveUser();
+        updateActiveUserChip(activeQQ);
       } catch (e) {
         showToast('加载用户失败', true);
       }

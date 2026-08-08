@@ -41,6 +41,7 @@
     <div class="page-head">
       <h1>用户与<span class="em">数据管理</span>。</h1>
       <p>选择 QQ 用户，管理其语音消息、角色扮演提示词模板以及知识库仓库路径。每个用户的数据独立管理。</p>
+      <div class="active-user-chip" id="activeUserChip" hidden></div>
     </div>
 
     <!-- 用户选择 -->
@@ -129,6 +130,14 @@
     }
     function persistActiveQQ(qq) {
       try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
+      updateActiveUserChip(qq);
+    }
+    function updateActiveUserChip(qq) {
+      const chip = document.getElementById('activeUserChip');
+      if (!chip) return;
+      if (qq) { chip.textContent = '当前：QQ ' + qq; chip.hidden = false;
+        chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
+      } else { chip.hidden = true; }
     }
 
     async function init() {
@@ -148,6 +157,7 @@
         renderUserMenu();
         renderUserGrid();
         renderActiveUser();
+        updateActiveUserChip(activeQQ);
       } catch (e) {
         showToast('加载用户失败', true);
       }
