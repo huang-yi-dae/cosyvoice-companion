@@ -150,7 +150,7 @@
 
         <div class="vu" id="vu">
           <div class="vu-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-          <span>正在合成，首次加载模型约需 1 分钟…</span>
+          <span id="vuText">正在合成，首次加载模型约需 1 分钟…</span>
         </div>
 
         <div class="status" id="status"></div>
@@ -488,6 +488,36 @@
     }
 
     // ── generate ───────────────────────────────────────────
+    // P3 · 合成等待计时器：实时显示已等待秒数，缓解"是否卡死"的焦虑
+    let synthTimer = null;
+    let synthStart = 0;
+    function startSynthTimer(isCloud) {
+      synthStart = Date.now();
+      const vuText = document.getElementById('vuText');
+      const tick = () => {
+        const s = Math.floor((Date.now() - synthStart) / 1000);
+        let msg;
+        if (isCloud) {
+          msg = `正在云端合成…已等待 ${s}s`;
+        } else if (s < 12) {
+          msg = `正在合成…已等待 ${s}s（首次加载模型约需 1 分钟）`;
+        } else if (s < 60) {
+          msg = `正在加载模型并合成…已等待 ${s}s，请稍候`;
+        } else {
+          const m = Math.floor(s / 60), rs = s % 60;
+          msg = `仍在合成…已等待 ${m} 分 ${rs}s，首次加载较慢属正常`;
+        }
+        vuText.textContent = msg;
+      };
+      tick();
+      synthTimer = setInterval(tick, 1000);
+    }
+    function stopSynthTimer() {
+      if (synthTimer) { clearInterval(synthTimer); synthTimer = null; }
+      const vuText = document.getElementById('vuText');
+      if (vuText) vuText.textContent = '正在合成，首次加载模型约需 1 分钟…';
+    }
+
     async function generateSpeech() {
       const text = document.getElementById('textInput').value.trim();
       if (!text) return showStatus('请输入要合成的文本', 'error');
@@ -506,6 +536,7 @@
       document.getElementById('vu').classList.add('active');
       document.getElementById('resultBox').style.display = 'none';
       showStatus('正在合成…', 'info');
+      startSynthTimer(isCloud);
 
       try {
         const res = await fetch('/api/generate', {
@@ -535,6 +566,7 @@
       } catch (e) {
         showStatus('合成失败：' + e.message, 'error');
       } finally {
+        stopSynthTimer();
         btn.disabled = false;
         document.getElementById('vu').classList.remove('active');
       }
