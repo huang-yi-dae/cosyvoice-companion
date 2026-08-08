@@ -646,3 +646,12 @@ audio {
   color: inherit; font-size: 0.76rem; padding: 4px 12px; border-radius: 999px; opacity: .85;
 }
 .result-banner .rb-close:hover { opacity: 1; }
+
+/* 文本字数反馈 */
+.char-count {
+  margin-top: 6px; text-align: right;
+  font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint);
+  transition: color .15s;
+}
+.char-count.over { color: var(--accent-hi); }
+.char-count.over::before { content: "⚠ "; }
