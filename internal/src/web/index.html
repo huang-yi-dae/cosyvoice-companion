@@ -16,6 +16,28 @@
       padding: 16px; margin-top: 12px;
     }
     .result-audio-wrap audio { margin-top: 0; }
+
+    /* ── 试听播放态反馈 ── */
+    .play-mini.playing {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-hi);
+    }
+    .voice-card.previewing {
+      border-color: var(--border-accent);
+    }
+    /* 播放中：让波形条呈现"跳动"动画，强化正在播放的感知 */
+    .voice-card.previewing .wave i {
+      background: var(--accent);
+      animation: preview-bounce 0.9s ease-in-out infinite;
+    }
+    .voice-card.previewing .wave i:nth-child(2n)   { animation-delay: .1s; }
+    .voice-card.previewing .wave i:nth-child(3n)   { animation-delay: .2s; }
+    .voice-card.previewing .wave i:nth-child(4n)   { animation-delay: .15s; }
+    @keyframes preview-bounce {
+      0%, 100% { transform: scaleY(0.5); opacity: .55; }
+      50%      { transform: scaleY(1);   opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -307,6 +329,9 @@
 
     async function switchUser(qq) {
       if (String(qq) === String(activeQQ)) { toggleUserMenu(); return; }
+      // 切换用户前停止正在进行的试听，避免播放态残留
+      if (previewAudio) { previewAudio.pause(); }
+      clearPreviewState();
       activeQQ = qq;
       selectedVoices.clear();
       toggleUserMenu();
@@ -383,7 +408,8 @@
              onclick="toggleVoice('${safeId}', this)">
           <div class="vc-name" title="${v.name}">${v.name}</div>
           <div class="vc-meta">${v.duration || 0}s · ${(v.size/1024).toFixed(0)}KB
-            <button class="play-mini" onclick="previewVoice(event, '${safeId}')">▶</button>
+            <button class="play-mini" data-preview-id="${encodeURIComponent(v.id)}"
+                    title="试听原始样本" onclick="previewVoice(event, '${safeId}')">▶</button>
           </div>
           <div class="wave">${bars}</div>
         </div>`;
@@ -399,13 +425,53 @@
       document.getElementById('sampleCount').textContent = '已选 ' + selectedVoices.size;
     }
 
+    // ── preview (试听：支持点击切换播放/暂停 + 播放态视觉反馈) ──
+    let previewingId = null;
+
+    function clearPreviewState() {
+      // 复位所有播放按钮图标 + 卡片高亮
+      document.querySelectorAll('.play-mini.playing').forEach(b => {
+        b.textContent = '▶';
+        b.classList.remove('playing');
+        const card = b.closest('.voice-card');
+        if (card) card.classList.remove('previewing');
+      });
+      previewingId = null;
+    }
+
+    function findPreviewBtn(id) {
+      return document.querySelector(`.play-mini[data-preview-id="${encodeURIComponent(id)}"]`);
+    }
+
     function previewVoice(ev, id) {
       ev.stopPropagation();
+
+      // 再次点击当前正在播放的样本 → 暂停并复位
+      if (previewingId === id && previewAudio && !previewAudio.paused) {
+        previewAudio.pause();
+        clearPreviewState();
+        return;
+      }
+
+      // 切换到新样本前，先停掉旧的并复位
+      if (previewAudio) { previewAudio.pause(); }
+      clearPreviewState();
+
       const q = activeQQ ? ('?qq=' + encodeURIComponent(activeQQ)) : '';
       const url = '/api/voice/' + encodeURIComponent(id) + q;
-      if (previewAudio) { previewAudio.pause(); }
       previewAudio = new Audio(url);
-      previewAudio.play().catch(() => showToast('无法播放样本', true));
+      previewingId = id;
+
+      const btn = findPreviewBtn(id);
+      const card = btn && btn.closest('.voice-card');
+      if (btn) { btn.textContent = '⏸'; btn.classList.add('playing'); }
+      if (card) card.classList.add('previewing');
+
+      // 播放结束 / 出错 → 自动复位
+      previewAudio.onended = clearPreviewState;
+      previewAudio.onerror = () => { clearPreviewState(); showToast('无法播放样本', true); };
+
+      previewAudio.play().catch(() => { clearPreviewState(); showToast('无法播放样本', true); });
     }
 
     // ── generate ───────────────────────────────────────────
