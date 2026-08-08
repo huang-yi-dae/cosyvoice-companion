@@ -37,6 +37,16 @@
     .bubble.them { align-self: flex-start; background: var(--surface-3); border: 1px solid var(--border-hi); color: var(--ink); border-bottom-left-radius: 4px; }
     .bubble .bubble-audio { margin-top: 8px; display: block; width: 240px; max-width: 100%; }
     .bubble .bubble-note { font-size: 0.67rem; color: var(--ink-faint); margin-top: 4px; }
+    .bubble .bubble-note.play-tip {
+      color: var(--accent-hi);
+      border: 1px solid var(--border-accent);
+      background: var(--accent-soft);
+      border-radius: 999px;
+      padding: 4px 12px;
+      display: inline-block;
+      transition: background .15s, border-color .15s;
+    }
+    .bubble .bubble-note.play-tip:hover { background: rgba(255,124,58,0.28); }
     .chat-empty { margin: auto; color: var(--ink-faint); font-size: 0.82rem; text-align: center; line-height: 1.7; }
 
     .chat-input-row { display: flex; gap: 10px; padding: 14px; border-top: 1px solid var(--border); background: rgba(0,0,0,0.2); }
@@ -368,7 +378,18 @@
         audio.className = 'bubble-audio';
         audio.src = data.url + '?t=' + Date.now();
         bubble.appendChild(audio);
-        audio.play().catch(() => {});
+        // P4 · 自动播放可能被浏览器策略拦截；失败时给出可点击的"点击播放"提示，
+        // 而不是静默失败让用户以为没声音。
+        audio.play().catch(() => {
+          const tip = addNote(bubble, '🔊 点击播放语音');
+          tip.classList.add('play-tip');
+          tip.style.cursor = 'pointer';
+          tip.onclick = () => {
+            audio.play().then(() => tip.remove()).catch(() => {
+              tip.textContent = '无法自动播放，请点上方播放器的 ▶';
+            });
+          };
+        });
       } catch (e) {
         note.textContent = '语音合成失败：' + e.message;
       }
