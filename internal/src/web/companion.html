@@ -8,7 +8,39 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/studio.css" />
+  <script src="/static/api.js" defer></script>
+  <script src="/static/ui.js" defer></script>
   <style>
+    /* ── AI 模拟·非真人 常驻提示 & 首次说明卡（伦理/预期管理，评审 P0）── */
+    .ai-disclaimer {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 12px; padding: 8px 14px;
+      font-size: 0.72rem; color: var(--ink-dim); line-height: 1.5;
+      background: var(--surface-3); border: 1px solid var(--border);
+      border-radius: 999px; width: fit-content; max-width: 100%;
+    }
+    .ai-disclaimer .ai-dot {
+      flex: none; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--amber); box-shadow: 0 0 8px var(--amber);
+    }
+    .ai-disclaimer b { color: var(--ink); font-weight: 600; }
+
+    .ai-notice-mask {
+      position: fixed; inset: 0; z-index: 90;
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .ai-notice-card {
+      max-width: 440px; width: 100%;
+      background: linear-gradient(160deg, var(--surface-2), var(--surface-1));
+      border: 1px solid var(--border-hi); border-radius: var(--radius);
+      padding: 26px 26px 22px; box-shadow: 0 24px 60px rgba(0,0,0,.5);
+    }
+    .ai-notice-card h3 { margin: 0 0 6px; font-size: 1.05rem; color: var(--ink); }
+    .ai-notice-card ul { margin: 14px 0 20px; padding-left: 18px; }
+    .ai-notice-card li { font-size: 0.82rem; color: var(--ink-dim); line-height: 1.7; margin-bottom: 6px; }
+    .ai-notice-card .btn-row { justify-content: flex-end; }
+
     /* ── companion-specific components ────────────────────────── */
     .cmp-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
     @media (max-width: 900px) {
@@ -96,6 +128,10 @@
       <h1>与你在意的人<span class="em">对话</span>。</h1>
       <p>用聊天记录学到的语气（SystemPrompt）驱动角色扮演对话，回复再用克隆音色朗读出来。文本对话走阿里云百炼（需在 .env 配置 DASHSCOPE_API_KEY），语音合成沿用工作室的本地 / 云端设置。</p>
       <div class="active-user-chip" id="activeUserChip" hidden></div>
+      <div class="ai-disclaimer" role="note">
+        <span class="ai-dot"></span>
+        <span><b>AI 模拟 · 非本人</b>：以下对话由模型根据历史聊天风格生成，可能出错，不代表对方真实想法。</span>
+      </div>
     </div>
 
     <div class="cmp-layout">
@@ -139,6 +175,22 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- 首次进入陪伴页的一次性伦理/预期说明卡（localStorage 记忆） -->
+  <div class="ai-notice-mask" id="aiNoticeMask" hidden>
+    <div class="ai-notice-card" role="dialog" aria-modal="true" aria-labelledby="aiNoticeTitle">
+      <h3 id="aiNoticeTitle">开始前，请了解</h3>
+      <p style="font-size:0.83rem;color:var(--ink-dim);margin:0">这是一个基于历史聊天记录的<b style="color:var(--ink)">角色扮演模拟</b>，不是与真人对话。</p>
+      <ul>
+        <li>回复由 AI 模型<b style="color:var(--ink)">根据聊天风格生成</b>，可能出错或不准确。</li>
+        <li>它<b style="color:var(--ink)">不代表对方本人的真实想法</b>，也无法预测其真实反应。</li>
+        <li>如对方是你在意或已失去的人，请注意这可能带来情绪波动，适度使用。</li>
+      </ul>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="dismissAiNotice()">我已了解，开始对话</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let activeQQ = null;
     let users = [];
@@ -149,27 +201,29 @@
     let sending = false;
     let toastTimer = null;
 
-    // ── P2 · 跨页面记住当前用户（localStorage）─────────────
-    const ACTIVE_QQ_KEY = 'cosyvoice_active_qq';
-    function restoreActiveQQ(cfgRes, list) {
-      let remembered = null;
-      try { remembered = localStorage.getItem(ACTIVE_QQ_KEY); } catch (e) {}
-      if (remembered && list.some(u => String(u.qq) === String(remembered))) return remembered;
-      return cfgRes.active_qq || (list[0] && list[0].qq) || null;
+    // ── P2 · 跨页面记住当前用户（已抽到 /static/ui.js，此处薄封装）──
+    function restoreActiveQQ(cfgRes, list) { return UI.resolveActiveQQ(cfgRes.active_qq, list); }
+    function persistActiveQQ(qq) { UI.persistActiveQQ(qq); }
+    function updateActiveUserChip(qq) { UI.updateActiveUserChip(qq); }
+
+    // ── 首次进入的一次性伦理/预期说明卡（评审 P0）──
+    const AI_NOTICE_KEY = 'cosyvoice_companion_notice_ack';
+    function maybeShowAiNotice() {
+      let ack = false;
+      try { ack = localStorage.getItem(AI_NOTICE_KEY) === '1'; } catch (e) {}
+      const mask = document.getElementById('aiNoticeMask');
+      if (mask && !ack) mask.hidden = false;
     }
-    function persistActiveQQ(qq) {
-      try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
-      updateActiveUserChip(qq);
-    }
-    function updateActiveUserChip(qq) {
-      const chip = document.getElementById('activeUserChip');
-      if (!chip) return;
-      if (qq) { chip.textContent = '当前：QQ ' + qq; chip.hidden = false;
-        chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
-      } else { chip.hidden = true; }
+    function dismissAiNotice() {
+      const mask = document.getElementById('aiNoticeMask');
+      if (mask) mask.hidden = true;
+      try { localStorage.setItem(AI_NOTICE_KEY, '1'); } catch (e) {}
+      const input = document.getElementById('msgInput');
+      if (input) input.focus();
     }
 
     async function init() {
+      maybeShowAiNotice();
       await loadUsers();
       await loadProviders();
       await loadLanguages();
@@ -438,13 +492,8 @@
         .replace(/"/g, '&quot;');
     }
 
-    function showToast(msg, err) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = 'toast show' + (err ? ' err' : '');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
-    }
+    // showToast 已抽到 /static/ui.js（UI.toast），此处保留薄封装。
+    function showToast(msg, err) { UI.toast(msg, err); }
 
     init();
   </script>
