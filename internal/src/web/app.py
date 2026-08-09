@@ -765,19 +765,12 @@ async def api_save_knowledge(body: KnowledgePaths):
 
 # ---- automation pipeline -----------------------------------------------------
 from voicekit import pipeline as _pipeline  # noqa: E402  (grouped lazy import; see roadmap #3)
+from jobs import BackgroundJob, _now as _jobs_now  # noqa: E402
 
-_MAX_LOGS = 500
-_pipeline_lock = threading.Lock()
-_pipeline_state: dict = {
-    "running": False,
-    "qq": None,
-    "steps": [],
-    "logs": [],
-    "ok": None,
-    "stopped_at": None,
-    "started_at": None,
-    "finished_at": None,
-}
+# Single-slot pipeline job (unifies the old _pipeline_lock/_pipeline_state pattern).
+_pipeline_job = BackgroundJob(
+    extra_defaults={"qq": None, "steps": [], "stopped_at": None},
+)
 
 
 class PipelineStart(BaseModel):
@@ -788,26 +781,21 @@ class PipelineStart(BaseModel):
 
 
 def _pipeline_event(event: dict) -> None:
-    """Update shared pipeline state from a run_pipeline event (thread-safe)."""
-    with _pipeline_lock:
-        etype = event.get("type")
-        if etype == "log":
-            logs = _pipeline_state["logs"]
-            logs.append(event.get("message", ""))
-            del logs[:-_MAX_LOGS]
-        elif etype == "step":
-            sid = event.get("id")
-            for s in _pipeline_state["steps"]:
+    """Update shared pipeline job from a run_pipeline event (thread-safe)."""
+    etype = event.get("type")
+    if etype == "log":
+        _pipeline_job.log(event.get("message", ""))
+    elif etype == "step":
+        sid = event.get("id")
+        with _pipeline_job.lock:
+            for s in _pipeline_job.extra["steps"]:
                 if s["id"] == sid:
                     s["status"] = event.get("status", s["status"])
                     if event.get("error"):
                         s["error"] = event["error"]
                     break
-        elif etype == "done":
-            _pipeline_state["running"] = False
-            _pipeline_state["ok"] = event.get("ok")
-            _pipeline_state["stopped_at"] = event.get("stopped_at")
-            _pipeline_state["finished_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    elif etype == "done":
+        _pipeline_job.finish(ok=event.get("ok"), stopped_at=event.get("stopped_at"))
 
 
 def _run_pipeline_bg(qq: str, step_ids, ptt_dir, stop_on_error) -> None:
@@ -828,8 +816,8 @@ async def api_pipeline_steps():
 
 @app.post("/api/pipeline/start")
 async def api_pipeline_start(body: PipelineStart):
-    with _pipeline_lock:
-        if _pipeline_state["running"]:
+    with _pipeline_job.lock:
+        if _pipeline_job.running:
             raise HTTPException(status_code=409, detail="流水线正在运行中")
         qq = body.qq or cfg.active_qq
         if not qq:
@@ -839,9 +827,14 @@ async def api_pipeline_start(body: PipelineStart):
         if bad:
             raise HTTPException(status_code=400, detail=f"未知步骤: {bad}")
         meta = {m["id"]: m for m in _pipeline.pipeline_steps()}
-        _pipeline_state.update(
-            running=True, qq=str(qq), ok=None, stopped_at=None, logs=[],
-            started_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), finished_at=None,
+        # Atomic check-then-start under the held lock (mirrors BackgroundJob.start).
+        _pipeline_job.running = True
+        _pipeline_job.ok = None
+        _pipeline_job.logs = []
+        _pipeline_job.started_at = _jobs_now()
+        _pipeline_job.finished_at = None
+        _pipeline_job.update_extra_locked(
+            qq=str(qq), stopped_at=None,
             steps=[{"id": sid, "title": meta[sid]["title"], "status": "pending", "error": None}
                    for sid in _pipeline.STEP_IDS if sid in selected],
         )
@@ -856,23 +849,14 @@ async def api_pipeline_start(body: PipelineStart):
 
 @app.get("/api/pipeline/status")
 async def api_pipeline_status():
-    with _pipeline_lock:
-        return json.loads(json.dumps(_pipeline_state))  # shallow snapshot copy
+    return _pipeline_job.snapshot()
 
 
 # ---- model catalog / on-demand download --------------------------------------
 from voicekit import models as _models  # noqa: E402  (grouped lazy import; see roadmap #3)
 
-_dl_lock = threading.Lock()
-_dl_state: dict = {
-    "running": False,
-    "name": None,
-    "ok": None,
-    "error": None,
-    "logs": [],
-    "started_at": None,
-    "finished_at": None,
-}
+# Single-slot download job (unifies the old _dl_lock/_dl_state pattern).
+_dl_job = BackgroundJob(extra_defaults={"name": None, "error": None})
 
 
 class ModelDownload(BaseModel):
@@ -880,27 +864,18 @@ class ModelDownload(BaseModel):
 
 
 def _dl_log(msg: str) -> None:
-    with _dl_lock:
-        logs = _dl_state["logs"]
-        logs.append(msg)
-        del logs[:-_MAX_LOGS]
+    _dl_job.log(msg)
 
 
 def _run_download_bg(name: str) -> None:
     try:
         res = _models.download_model(cfg, name, on_log=_dl_log)
-        with _dl_lock:
-            _dl_state["ok"] = bool(res.get("ok"))
-            _dl_state["error"] = res.get("error")
+        _dl_job.set_extra(error=res.get("error"))
+        _dl_job.finish(ok=bool(res.get("ok")))
     except Exception as e:  # noqa: BLE001 — never leave 'running' stuck
         _dl_log(f"[fatal] {type(e).__name__}: {e}")
-        with _dl_lock:
-            _dl_state["ok"] = False
-            _dl_state["error"] = str(e)
-    finally:
-        with _dl_lock:
-            _dl_state["running"] = False
-            _dl_state["finished_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        _dl_job.set_extra(error=str(e))
+        _dl_job.finish(ok=False)
 
 
 @app.get("/api/models/catalog")
@@ -910,23 +885,25 @@ async def api_models_catalog():
 
 @app.post("/api/models/download")
 async def api_models_download(body: ModelDownload):
-    with _dl_lock:
-        if _dl_state["running"]:
-            raise HTTPException(status_code=409, detail=f"正在下载 {_dl_state['name']}，请稍候")
+    with _dl_job.lock:
+        if _dl_job.running:
+            raise HTTPException(status_code=409, detail=f"正在下载 {_dl_job.extra.get('name')}，请稍候")
         if not cfg.model_repo_id(body.name):
             raise HTTPException(status_code=400, detail=f"未知模型: {body.name}")
-        _dl_state.update(
-            running=True, name=body.name, ok=None, error=None, logs=[],
-            started_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), finished_at=None,
-        )
+        # Atomic check-then-start: mutate under the held lock (mirrors start()).
+        _dl_job.running = True
+        _dl_job.ok = None
+        _dl_job.logs = []
+        _dl_job.started_at = _jobs_now()
+        _dl_job.finished_at = None
+        _dl_job.update_extra_locked(name=body.name, error=None)
     threading.Thread(target=_run_download_bg, args=(body.name,), daemon=True).start()
     return {"success": True, "name": body.name}
 
 
 @app.get("/api/models/download/status")
 async def api_models_download_status():
-    with _dl_lock:
-        return json.loads(json.dumps(_dl_state))
+    return _dl_job.snapshot()
 
 
 if __name__ == "__main__":

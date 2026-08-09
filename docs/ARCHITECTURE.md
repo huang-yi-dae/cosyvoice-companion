@@ -80,6 +80,7 @@
 |------|------|
 | `app.py` | FastAPI 组合根：路由 + 鉴权中间件 + 后台任务状态（pipeline/download）。**注**：仍偏大，是持续瘦身目标（见下） |
 | `services.py` | 后端单例：引擎 / 云 provider / LLM 缓存 + `providers_info`（仅依赖 cfg，与路由解耦，便于测试 mock） |
+| `jobs.py` | 统一后台任务状态：`BackgroundJob`（线程安全的 running/ok/logs/时间戳 + extra 字段），pipeline / download 共用 |
 | `static/api.js` | 前端共享：统一 `/api` 调用 + `friendlyError` 错误归类 |
 | `static/ui.js` | 前端共享：toast / 活跃用户 chip / QQ 记忆 / 骨架屏 |
 | `static/studio.css` | Glass Studio 设计系统（tokens + 组件样式） |
@@ -106,18 +107,19 @@ API 契约以 FastAPI 自动生成的 OpenAPI 为准：启动服务后访问 **`
   对局域网开放（`0.0.0.0`）时**必须**设 `WEB_AUTH_TOKEN`（`app.py` 启动会警告）。
 - **重资源惰性加载**：CosyVoice 模型只在首次合成时加载；UI 与列表接口不依赖 `torch`，
   因此演示/浏览无需 GPU 或下载权重。
-- **后台长任务**：pipeline / 模型下载在后台线程运行，状态存于 `app.py` 模块级
-  `dict + Lock`，前端轮询 `.../status`。**已知局限**：无法安全强杀线程，故不提供
-  「取消」；`/models` 改为展示「已用时 + 预估耗时」让进度可见（见 PR #28）。
+- **后台长任务**：pipeline / 模型下载在后台线程运行，状态由统一的 `BackgroundJob`
+  （`web/jobs.py`）持有——线程安全的 `running/ok/logs/started_at/finished_at` +
+  任务特有的 `extra` 字段，前端轮询 `.../status`。**已知局限**：无法安全强杀线程，
+  故不提供「取消」；`/models` 改为展示「已用时 + 预估耗时」让进度可见（见 PR #28）。
 - **无状态对话**：`/api/chat` 不在后端存历史，由前端携带 `history` 传入。
 
 ---
 
 ## 4. 已知技术债 / 后续方向
 
-- **`app.py` 继续瘦身**：已抽出 `services.py`（PR #27）。下一步可把路由按域拆为
-  `routers/`（voices / synth / pipeline / models / chat），并把后台任务状态抽象为
-  统一的 `BackgroundJob`（id / status / logs / progress）。
+- **`app.py` 继续瘦身**：已抽出 `services.py`（PR #27）与统一后台任务抽象
+  `web/jobs.py::BackgroundJob`（pipeline / download 已复用，直连单元测试覆盖）。
+  下一步可把路由按域拆为 `routers/`（voices / synth / pipeline / models / chat）。
 - **前端共享库**：`api.js` / `ui.js` 已在**全部 5 个页面**接入完成
   （PR #24、#25、#31、#32、#33）——chip / QQ 记忆 / toast 统一委托，无重复实现。
 - **测试金字塔**：已补 API 层集成测试（PR #29）。可继续覆盖 pipeline 事件状态机、
