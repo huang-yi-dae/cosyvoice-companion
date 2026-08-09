@@ -28,10 +28,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from voicekit import load_config
 from voicekit.audio import concat_wavs
-from voicekit.cosyvoice_engine import CosyVoiceEngine
-from voicekit.dashscope_tts import DashScopeTTSProvider
-from voicekit.llm import LLMClient
 from voicekit.wavstream import wav_stream
+
+# Backend singletons (engine / cloud provider / chat LLM / providers_info) live
+# in services.py — architecture review P1: keep app.py a thin composition root.
+# They take an explicit cfg; thin wrappers below bind the module-level cfg so
+# route handlers keep calling get_engine()/... unchanged.
+import services as _services
 
 # ---- configuration -----------------------------------------------------------
 cfg = load_config()
@@ -96,77 +99,27 @@ if cfg.static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(cfg.static_dir)), name="static")
 
 
-# ---- lazy, single-slot engine cache -----------------------------------------
-_engines: dict = {}
+# ---- backend singletons: thin wrappers delegating to services.py -------------
+# (Caches now live in services.py; these bind the module-level cfg so all route
+#  handlers keep their existing call signatures — behaviour is identical.)
+def get_engine(model_name: Optional[str] = None):
+    """Return a loaded local engine for ``model_name`` (cached, single-slot)."""
+    return _services.get_engine(cfg, model_name)
 
 
-def get_engine(model_name: Optional[str] = None) -> CosyVoiceEngine:
-    """Return a loaded engine for ``model_name`` (cached, single-slot)."""
-    model_dir = cfg.model_path(model_name)
-    key = model_dir.name
-    if key not in _engines:
-        _engines.clear()  # keep only one model in memory at a time
-        print(f"Loading CosyVoice model: {key} ...")
-        eng = CosyVoiceEngine(cfg, model_dir=model_dir)
-        eng.load()
-        print("Model loaded!")
-        _engines[key] = eng
-    return _engines[key]
-
-
-# ---- cloud (DashScope) provider cache ---------------------------------------
-_dashscope_provider: dict = {}
-
-
-def get_dashscope_provider() -> DashScopeTTSProvider:
+def get_dashscope_provider():
     """Return a cached DashScope cloud provider (raises if key/config missing)."""
-    if "p" not in _dashscope_provider:
-        dcfg = cfg.dashscope_cfg()
-        _dashscope_provider["p"] = DashScopeTTSProvider(
-            api_key=cfg.dashscope_api_key,
-            target_model=dcfg.get("target_model", "cosyvoice-v3.5-flash"),
-            region=dcfg.get("region", "cn-beijing"),
-            voices=cfg.dashscope_voices(),
-            oss=dcfg.get("oss", {}),
-        )
-    return _dashscope_provider["p"]
+    return _services.get_dashscope_provider(cfg)
 
 
-# ---- roleplay chat LLM cache -------------------------------------------------
-_llm_client: dict = {}
-
-
-def get_llm_client() -> LLMClient:
+def get_llm_client():
     """Return a cached roleplay chat client (raises if API key missing)."""
-    if "c" not in _llm_client:
-        lcfg = cfg.llm_cfg()
-        _llm_client["c"] = LLMClient(
-            api_key=cfg.dashscope_api_key,
-            model=lcfg.get("model") or "qwen-plus",
-            max_turns=int(lcfg.get("max_turns", 6)),
-        )
-    return _llm_client["c"]
+    return _services.get_llm_client(cfg)
 
 
 def providers_info() -> dict:
     """Per-provider metadata for the front end (types, voices, key status)."""
-    dcfg = cfg.dashscope_cfg()
-    return {
-        "default": cfg.tts_provider_default(),
-        "local": {
-            "type": "cosyvoice_local",
-            "needs_reference": True,
-            "label": "本地模型",
-        },
-        "dashscope": {
-            "type": "dashscope",
-            "needs_reference": False,
-            "label": "阿里云百炼（云端）",
-            "configured": bool(cfg.dashscope_api_key),
-            "target_model": dcfg.get("target_model", "cosyvoice-v3.5-flash"),
-            "voices": cfg.dashscope_voices(),
-        },
-    }
+    return _services.providers_info(cfg)
 
 
 # ---- per-user helpers --------------------------------------------------------
