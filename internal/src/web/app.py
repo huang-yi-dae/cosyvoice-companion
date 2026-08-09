@@ -376,29 +376,11 @@ class ChatRequest(BaseModel):
 
 
 # ---- pages -------------------------------------------------------------------
-@app.get("/")
-async def root():
-    return FileResponse(str(cfg.index_html))
+# Static page routes live in routers/pages.py (architecture review §4). They
+# depend only on cfg, so they were the safest first slice to extract.
+from routers import pages as _pages_router  # noqa: E402
 
-
-@app.get("/manage")
-async def manage():
-    return FileResponse(str(cfg.manage_html))
-
-
-@app.get("/pipeline")
-async def pipeline_page():
-    return FileResponse(str(cfg.pipeline_html))
-
-
-@app.get("/models")
-async def models_page():
-    return FileResponse(str(cfg.models_html))
-
-
-@app.get("/companion")
-async def companion_page():
-    return FileResponse(str(cfg.companion_html))
+app.include_router(_pages_router.build_router(cfg))
 
 
 # ---- config / users / models -------------------------------------------------

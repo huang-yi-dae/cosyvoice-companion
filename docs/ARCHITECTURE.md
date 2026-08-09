@@ -81,6 +81,7 @@
 | `app.py` | FastAPI 组合根：路由 + 鉴权中间件 + 后台任务状态（pipeline/download）。**注**：仍偏大，是持续瘦身目标（见下） |
 | `services.py` | 后端单例：引擎 / 云 provider / LLM 缓存 + `providers_info`（仅依赖 cfg，与路由解耦，便于测试 mock） |
 | `jobs.py` | 统一后台任务状态：`BackgroundJob`（线程安全的 running/ok/logs/时间戳 + extra 字段），pipeline / download 共用 |
+| `routers/pages.py` | 静态页面路由（`/` `/manage` `/pipeline` `/models` `/companion`）；`build_router(cfg)` 工厂，app.py include（架构评审 §4 首个抽离切片） |
 | `static/api.js` | 前端共享：统一 `/api` 调用 + `friendlyError` 错误归类 |
 | `static/ui.js` | 前端共享：toast / 活跃用户 chip / QQ 记忆 / 骨架屏 |
 | `static/studio.css` | Glass Studio 设计系统（tokens + 组件样式） |
@@ -119,7 +120,8 @@ API 契约以 FastAPI 自动生成的 OpenAPI 为准：启动服务后访问 **`
 
 - **`app.py` 继续瘦身**：已抽出 `services.py`（PR #27）与统一后台任务抽象
   `web/jobs.py::BackgroundJob`（pipeline / download 已复用，直连单元测试覆盖）。
-  下一步可把路由按域拆为 `routers/`（voices / synth / pipeline / models / chat）。
+  路由按域拆为 `routers/` 已启动：静态页面路由已抽到 `routers/pages.py`（`build_router(cfg)`
+  工厂 + app.py include）。剩余 voices / synth / pipeline / models / chat 路由待续拆。
 - **前端共享库**：`api.js` / `ui.js` 已在**全部 5 个页面**接入完成
   （PR #24、#25、#31、#32、#33）——chip / QQ 记忆 / toast 统一委托，无重复实现。
 - **测试金字塔**：已补 API 层集成测试（PR #29）。可继续覆盖 pipeline 事件状态机、
