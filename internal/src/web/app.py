@@ -9,7 +9,6 @@ the management console stay responsive without waiting for the model.
 import re
 import sys
 import json
-import uuid
 import hmac
 from pathlib import Path
 from typing import List, Optional
@@ -18,7 +17,7 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -298,15 +297,8 @@ def regenerate_prompt(qq: str) -> str:
 
 
 # ---- models ------------------------------------------------------------------
-class TTSRequest(BaseModel):
-    text: str
-    voice_ids: List[str] = []
-    qq: Optional[str] = None
-    model: Optional[str] = None
-    prompt_text: Optional[str] = None
-    language: Optional[str] = None
-    provider: Optional[str] = None
-    voice: Optional[str] = None
+# TTSRequest moved to routers/synth.py (its only consumers were the generate
+# routes). Response models below stay here (API contract + /docs).
 
 
 # ---- response models (API contract + auto OpenAPI docs at /docs; review P1) --
@@ -426,161 +418,16 @@ from routers import cloud_voices as _cloud_voices_router  # noqa: E402
 app.include_router(_cloud_voices_router.build_router(cfg, get_dashscope_provider))
 
 
-# ---- generation (sync -> runs in threadpool; model load is heavy) ------------
-@app.post("/api/generate")
-def generate_speech(request: TTSRequest):
-    import soundfile as sf
+# ---- generation (extracted to routers/synth.py; heavy: engine/cloud) ---------
+# All backends are injected as callables so synth.py never imports app.py.
+from routers import synth as _synth_router  # noqa: E402
 
-    if not request.text.strip():
-        raise HTTPException(status_code=400, detail="文本不能为空")
-
-    provider_name = request.provider or cfg.tts_provider_default()
-    filename = f"{uuid.uuid4().hex[:8]}.wav"
-    output_path = OUTPUT_DIR / filename
-
-    # ---- cloud provider path: synthesize from a pre-registered voice id -----
-    if provider_name == "dashscope":
-        if not request.voice:
-            raise HTTPException(status_code=400, detail="请选择一个云端音色")
-        try:
-            provider = get_dashscope_provider()
-            provider.synthesize_to_file(
-                request.text, output_path,
-                voice=request.voice, language=request.language,
-            )
-            data, sr = sf.read(str(output_path))
-            return {
-                "success": True,
-                "filename": filename,
-                "duration": round(len(data) / sr, 1),
-                "size": output_path.stat().st_size,
-                "url": f"/api/audio/{filename}",
-                "model": provider.name,
-                "language": request.language or "auto",
-                "samples_used": 0,
-            }
-        except HTTPException:
-            raise
-        except Exception as e:  # noqa: BLE001 — surface synth errors to the client
-            raise HTTPException(status_code=500, detail=str(e))
-
-    # ---- local provider path: zero-shot clone from reference samples --------
-    if not request.voice_ids:
-        raise HTTPException(status_code=400, detail="请至少选择一个语音样本")
-
-    ref_paths = []
-    for vid in request.voice_ids:
-        p = resolve_voice_path(vid, request.qq)
-        if p.exists():
-            ref_paths.append(p)
-    if not ref_paths:
-        raise HTTPException(status_code=404, detail="所选语音样本不存在")
-
-    # Combine multiple samples into a single richer reference clip.
-    if len(ref_paths) == 1:
-        reference = ref_paths[0]
-    else:
-        reference = concat_wavs(
-            ref_paths,
-            OUTPUT_DIR / f"ref_{uuid.uuid4().hex[:8]}.wav",
-            target_sr=cfg.target_sr,
-        )
-
-    try:
-        engine = get_engine(request.model)
-        engine.synthesize_to_file(
-            request.text, output_path,
-            reference_wav=reference, prompt_text=request.prompt_text,
-            language=request.language,
-        )
-
-        data, sr = sf.read(str(output_path))
-        return {
-            "success": True,
-            "filename": filename,
-            "duration": round(len(data) / sr, 1),
-            "size": output_path.stat().st_size,
-            "url": f"/api/audio/{filename}",
-            "model": engine.model_dir.name,
-            "language": request.language or "auto",
-            "samples_used": len(ref_paths),
-        }
-    except Exception as e:  # noqa: BLE001 — surface synth errors to the client
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-def _resolve_reference(request: TTSRequest) -> Path:
-    """Resolve+combine the selected local voice samples into one reference WAV."""
-    if not request.voice_ids:
-        raise HTTPException(status_code=400, detail="请至少选择一个语音样本")
-    ref_paths = []
-    for vid in request.voice_ids:
-        p = resolve_voice_path(vid, request.qq)
-        if p.exists():
-            ref_paths.append(p)
-    if not ref_paths:
-        raise HTTPException(status_code=404, detail="所选语音样本不存在")
-    if len(ref_paths) == 1:
-        return ref_paths[0]
-    return concat_wavs(
-        ref_paths,
-        OUTPUT_DIR / f"ref_{uuid.uuid4().hex[:8]}.wav",
-        target_sr=cfg.target_sr,
+app.include_router(
+    _synth_router.build_router(
+        cfg, OUTPUT_DIR, get_engine, get_dashscope_provider,
+        resolve_voice_path, concat_wavs, wav_stream,
     )
-
-
-@app.post("/api/generate/stream")
-def generate_speech_stream(request: TTSRequest):
-    """Stream synthesized audio as ``audio/wav`` for progressive playback.
-
-    Local cloning streams PCM chunks from the model as they are produced (lower
-    time-to-first-audio). The cloud provider has no chunked API here, so it
-    synthesizes once and the finished WAV is streamed in a single pass.
-    """
-    if not request.text.strip():
-        raise HTTPException(status_code=400, detail="文本不能为空")
-
-    provider_name = request.provider or cfg.tts_provider_default()
-
-    # ---- cloud: synthesize then stream the finished file --------------------
-    if provider_name == "dashscope":
-        if not request.voice:
-            raise HTTPException(status_code=400, detail="请选择一个云端音色")
-        try:
-            provider = get_dashscope_provider()
-            tmp = OUTPUT_DIR / f"{uuid.uuid4().hex[:8]}.wav"
-            provider.synthesize_to_file(
-                request.text, tmp, voice=request.voice, language=request.language,
-            )
-        except Exception as e:  # noqa: BLE001 — surface synth errors to the client
-            raise HTTPException(status_code=500, detail=str(e))
-
-        def _file_iter(path: Path, chunk: int = 32768):
-            with open(path, "rb") as f:
-                while True:
-                    block = f.read(chunk)
-                    if not block:
-                        break
-                    yield block
-
-        return StreamingResponse(_file_iter(tmp), media_type="audio/wav")
-
-    # ---- local: stream PCM chunks from the model as they arrive -------------
-    reference = _resolve_reference(request)
-    try:
-        engine = get_engine(request.model)
-        language_tag = cfg.language_tag(request.language)
-        pcm_chunks = engine.stream_pcm(
-            request.text, reference,
-            prompt_text=request.prompt_text, language_tag=language_tag,
-        )
-        return StreamingResponse(
-            wav_stream(pcm_chunks, engine.sample_rate), media_type="audio/wav",
-        )
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 — surface synth errors to the client
-        raise HTTPException(status_code=500, detail=str(e))
+)
 
 
 # ---- management: messages / prompt / knowledge paths -------------------------

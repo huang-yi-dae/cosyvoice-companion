@@ -202,3 +202,9 @@ def test_prompt_regenerate_from_stats(client):
 def test_generate_rejects_empty_text(client):
     r = client.post("/api/generate", json={"text": "  ", "voice_ids": [], "qq": DEMO_QQ})
     assert r.status_code == 400
+
+
+def test_generate_stream_rejects_empty_text(client):
+    # /api/generate/stream extracted to routers/synth.py — same empty-text guard.
+    r = client.post("/api/generate/stream", json={"text": "  ", "voice_ids": [], "qq": DEMO_QQ})
+    assert r.status_code == 400

@@ -85,6 +85,7 @@
 | `routers/tasks.py` | 后台任务路由：pipeline（steps/start/status）+ 模型下载（catalog/download/status）；`build_router(cfg)` 内部构造两个 `BackgroundJob` |
 | `routers/cloud_voices.py` | 云端音色管理路由（DashScope 枚举/创建/删除）；`build_router(cfg, get_dashscope_provider)`，仅依赖 cfg + provider accessor |
 | `routers/audio.py` | 音频文件路由（`/api/audio` 播放、`/api/save` 保存、`/api/saved` 列表、`/api/voice/{id:path}`）；`build_router(output_dir, saved_dir, resolve_voice_path)` |
+| `routers/synth.py` | 语音合成路由（`/api/generate` + `/api/generate/stream`）与 `TTSRequest`；`build_router` 注入 cfg/output_dir/get_engine/get_dashscope_provider/resolve_voice_path/concat_wavs/wav_stream |
 | `static/api.js` | 前端共享：统一 `/api` 调用 + `friendlyError` 错误归类 |
 | `static/ui.js` | 前端共享：toast / 活跃用户 chip / QQ 记忆 / 骨架屏 |
 | `static/studio.css` | Glass Studio 设计系统（tokens + 组件样式） |
@@ -127,7 +128,8 @@ API 契约以 FastAPI 自动生成的 OpenAPI 为准：启动服务后访问 **`
   （pipeline + 模型下载）已抽到 `routers/tasks.py`（均用 `build_router(cfg)` 工厂 + app.py
   include）。云端音色、音频文件路由已分别抽到 `routers/cloud_voices.py`、`routers/audio.py`
   （音频路由把 `resolve_voice_path` 作为 callable 注入，避免耦合用户配置路径 helper）。
-  剩余 synth（generate/stream）/ chat（chat + 用户 messages/prompt）路由待续拆。
+  合成路由（generate/stream）已抽到 `routers/synth.py`（TTSRequest 随迁）。
+  剩余 chat（chat + 用户 messages/prompt）路由待续拆。
 - **前端共享库**：`api.js` / `ui.js` 已在**全部 5 个页面**接入完成
   （PR #24、#25、#31、#32、#33）——chip / QQ 记忆 / toast 统一委托，无重复实现。
 - **测试金字塔**：已补 API 层集成测试（PR #29）。可继续覆盖 pipeline 事件状态机、
