@@ -118,8 +118,8 @@ API 契约以 FastAPI 自动生成的 OpenAPI 为准：启动服务后访问 **`
 - **`app.py` 继续瘦身**：已抽出 `services.py`（PR #27）。下一步可把路由按域拆为
   `routers/`（voices / synth / pipeline / models / chat），并把后台任务状态抽象为
   统一的 `BackgroundJob`（id / status / logs / progress）。
-- **前端共享库推广**：`api.js` / `ui.js` 已在 `index.html`、`companion.html` 接入
-  （PR #24、#25），其余 3 页可按相同方式接入以进一步去重。
+- **前端共享库**：`api.js` / `ui.js` 已在**全部 5 个页面**接入完成
+  （PR #24、#25、#31、#32、#33）——chip / QQ 记忆 / toast 统一委托，无重复实现。
 - **测试金字塔**：已补 API 层集成测试（PR #29）。可继续覆盖 pipeline 事件状态机、
   错误分支。
 - **配置拆分**：`config.py` 可按域拆为 `PathsConfig / TTSConfig / ModelConfig`。
