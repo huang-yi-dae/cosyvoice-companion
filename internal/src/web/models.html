@@ -137,6 +137,7 @@
       <div class="dl-meta">
         <span>模型 <b id="dlName">—</b></span>
         <span>开始 <b id="dlStart">—</b></span>
+        <span>已用时 <b id="dlElapsed">—</b></span>
         <span>结束 <b id="dlFinish">—</b></span>
       </div>
       <div class="dl-bar-track"><div class="dl-bar-fill" id="dlBar"></div></div>
@@ -278,6 +279,30 @@
       return '约 ' + (min / 60).toFixed(1) + ' 小时';
     }
 
+    // ── 长任务耗时反馈（评审 P1）──────────────────────────
+    // 从 "YYYY-MM-DD HH:MM:SS" 解析为本地时间戳；无法解析返回 null。
+    function parseTs(s) {
+      if (!s) return null;
+      const t = Date.parse(String(s).replace(' ', 'T'));
+      return isNaN(t) ? null : t;
+    }
+    // 已用时（秒）：运行中用当前时间，已结束用 finished_at。
+    function elapsedSeconds(startedAt, finishedAt) {
+      const start = parseTs(startedAt);
+      if (start == null) return null;
+      const end = parseTs(finishedAt) || Date.now();
+      return Math.max(0, Math.round((end - start) / 1000));
+    }
+    function fmtElapsed(secs) {
+      const m = Math.floor(secs / 60), s = secs % 60;
+      return (m > 0 ? m + '分' : '') + s + '秒';
+    }
+    // 该模型的预估分钟数（从已加载的 catalog 匹配），用于运行中的参考文案。
+    function etaMinutesFor(name) {
+      const m = (catalog || []).find(x => x.name === name);
+      return m ? m.est_minutes : null;
+    }
+
     function renderCard(m) {
       const name = escapeHtml(m.name);
       const safe = m.name.replace(/'/g, "\\'");
@@ -393,10 +418,22 @@
       document.getElementById('dlStart').textContent = st.started_at || '—';
       document.getElementById('dlFinish').textContent = st.finished_at || (st.running ? '下载中…' : '—');
 
+      // 已用时：从 started_at 计算，运行中每次轮询刷新（让用户看到进度未卡死）
+      const elapsedEl = document.getElementById('dlElapsed');
+      if (elapsedEl) {
+        const secs = elapsedSeconds(st.started_at, st.finished_at);
+        elapsedEl.textContent = secs == null ? '—' : fmtElapsed(secs);
+      }
+
       const sub = document.getElementById('dlSub');
       const bar = document.getElementById('dlBar');
       bar.className = 'dl-bar-fill';
-      if (st.running) sub.textContent = '正在从 ModelScope 下载…';
+      if (st.running) {
+        // 附带预估耗时（若目录里能匹配到该模型的 est_minutes）作为参考
+        const eta = etaMinutesFor(st.name);
+        sub.textContent = '正在从 ModelScope 下载…' +
+          (eta ? '（预估约 ' + fmtTime(eta) + '，实际取决于网络）' : '');
+      }
       else if (st.ok === true) { sub.textContent = '下载完成'; bar.classList.add('done'); }
       else if (st.ok === false) { sub.textContent = '下载失败'; bar.classList.add('err'); }
       else sub.textContent = '—';
