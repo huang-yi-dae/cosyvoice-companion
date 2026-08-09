@@ -9,7 +9,34 @@ QQ 聊天记录分析 + 基于 CosyVoice-300M 的语音克隆（个人研究用�
 
 ## 快速开始
 
-### 0. 一键初始化环境（首次运行）
+### 0. 快速体验（演示数据，无需真实 QQ 数据）
+
+想先看看界面长什么样、各页面怎么用，而不想马上解密 QQ 数据库、下载上 GB 的模型？
+用内置的**演示种子数据脚本**一键造出可用数据，几秒钟就能把 Web 打开体验：
+
+```bash
+# 1. 安装最小运行依赖（无需 torch，仅浏览/试听/看数据）
+pip install fastapi uvicorn pyyaml python-dotenv numpy soundfile
+
+# 2. 生成演示数据（2 个演示用户、可播放的语音样本、聊天记录、人设、模型占位）
+python internal/src/scripts/seed_demo_data.py
+
+# 3. 在 .env 里把演示用户设为当前用户（脚本用的是 10001 / 10002）
+echo "ACTIVE_QQ=10001" >> .env
+
+# 4. 启动 Web
+python -m uvicorn app:app --app-dir internal/src/web --host 127.0.0.1 --port 8000
+# 打开 http://127.0.0.1:8000
+```
+
+打开后 5 个页面（工作室 `/`、管理台 `/manage`、自动化 `/pipeline`、模型 `/models`、
+陪伴 `/companion`）都会**开箱有内容**：可试听语音样本、浏览语音消息、查看/微调人设。
+
+> 说明：种子数据只用于演示，**点击「合成」仍需真实模型权重**（本地下载或配置云端
+> `DASHSCOPE_API_KEY`）。脚本幂等、只操作演示 QQ（10001/10002），`private/` 与 `.env`
+> 均已 gitignore，不会污染真实数据或被提交。
+
+### 1. 一键初始化环境（Windows，真实数据流程）
 
 项目自带的虚拟环境改为**按需动态创建**。首次拿到仓库时，在项目根目录运行：
 
@@ -27,7 +54,7 @@ QQ 聊天记录分析 + 基于 CosyVoice-300M 的语音克隆（个人研究用�
 > 首次执行 PowerShell 脚本若被策略拦截，可在当前会话放行：
 > `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`。
 
-### 1. 配置
+### 2. 配置
 
 ```powershell
 # 复制并填写本地密钥/用户
@@ -38,7 +65,7 @@ Copy-Item .env.example .env
 `config/config.yaml` 保存非敏感的默认路径与参数（可提交）；`.env` 保存敏感值
 （QQ 号、SQLCipher 密钥、姓名，已 gitignore，切勿提交）。
 
-### 2. 准备某个用户的数据
+### 3. 准备某个用户的数据
 
 在 `private/users/<qq>/` 下放入该用户的数据：
 
@@ -50,7 +77,7 @@ private/users/<qq>/
 └── reports/                  # 分析报告
 ```
 
-### 3. 提取并转换语音
+### 4. 提取并转换语音
 
 ```powershell
 $py = ".venv/Scripts/python.exe"
@@ -58,13 +85,13 @@ $py = ".venv/Scripts/python.exe"
 & $py internal/src/scripts/extract_voice.py --user <qq> # 或临时指定其他用户
 ```
 
-### 4. 克隆语音
+### 5. 克隆语音
 
 ```powershell
 & $py internal/src/scripts/clone_voice.py --user <qq> --text "你好呀"
 ```
 
-### 5. 启动 Web 应用
+### 6. 启动 Web 应用
 
 ```powershell
 ./run.ps1                       # 推荐：确保环境就绪后启动
