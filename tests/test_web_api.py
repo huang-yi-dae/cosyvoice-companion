@@ -208,3 +208,9 @@ def test_generate_stream_rejects_empty_text(client):
     # /api/generate/stream extracted to routers/synth.py — same empty-text guard.
     r = client.post("/api/generate/stream", json={"text": "  ", "voice_ids": [], "qq": DEMO_QQ})
     assert r.status_code == 400
+
+
+def test_chat_rejects_empty_message(client):
+    # /api/chat extracted to routers/chat.py — empty-message guard returns 400.
+    r = client.post("/api/chat", json={"message": "  ", "qq": DEMO_QQ, "history": []})
+    assert r.status_code == 400

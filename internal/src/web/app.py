@@ -16,7 +16,7 @@ from typing import List, Optional
 # internal/src/web/app.py -> add internal/src for the voicekit package
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -344,24 +344,13 @@ class ModelsResponse(BaseModel):
     default: str
 
 
-class PromptBody(BaseModel):
-    content: str
-
-
 class KnowledgePaths(BaseModel):
     qq: str
     paths: List[str]
 
 
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-
-class ChatRequest(BaseModel):
-    message: str
-    qq: Optional[str] = None
-    history: List[ChatMessage] = []
+# PromptBody / ChatMessage / ChatRequest moved to routers/chat.py (their only
+# consumers were the chat + prompt routes now living there).
 
 
 # ---- pages -------------------------------------------------------------------
@@ -430,64 +419,23 @@ app.include_router(
 )
 
 
-# ---- management: messages / prompt / knowledge paths -------------------------
-@app.get("/api/users/{qq}/messages")
-async def api_messages(qq: str):
-    msgs = voice_messages(qq)
-    return {"qq": qq, "count": len(msgs), "messages": msgs}
+# ---- companion chat + per-user messages/prompt ------------------------------
+# Extracted to routers/chat.py (architecture review §4). Pure-logic helpers stay
+# here and are injected as callables so the router never imports app.py.
+from routers import chat as _chat_router  # noqa: E402
 
-
-@app.get("/api/users/{qq}/prompt")
-async def api_get_prompt(qq: str):
-    found = existing_prompt(qq)
-    if found:
-        return {"qq": qq, **found}
-    return {"qq": qq, "content": default_prompt(qq), "source": "default"}
-
-
-@app.post("/api/users/{qq}/prompt")
-async def api_save_prompt(qq: str, body: PromptBody):
-    state = load_state()
-    state.setdefault("prompts", {})[str(qq)] = body.content
-    save_state(state)
-    return {"success": True, "source": "override"}
-
-
-@app.post("/api/users/{qq}/prompt/regenerate")
-async def api_regen_prompt(qq: str):
-    content = regenerate_prompt(qq)
-    state = load_state()
-    state.setdefault("prompts", {})[str(qq)] = content
-    save_state(state)
-    return {"success": True, "content": content, "source": "regenerated"}
-
-
-# ---- companion chat (roleplay LLM -> text; front end voices it via /api/generate)
-@app.post("/api/chat")
-def companion_chat(request: ChatRequest):
-    """Roleplay one turn: persona SystemPrompt + history + message -> reply text.
-
-    The reply is returned as text; the companion page then sends it to
-    ``/api/generate`` (or ``/api/generate/stream``) to voice it in the cloned
-    voice. Conversation history is supplied by the client (stateless backend).
-    """
-    if not request.message.strip():
-        raise HTTPException(status_code=400, detail="消息不能为空")
-
-    found = existing_prompt(request.qq) if request.qq else existing_prompt(cfg.active_qq or "")
-    system_prompt = found["content"] if found else default_prompt(request.qq or "")
-    source = found["source"] if found else "default"
-
-    history = [{"role": m.role, "content": m.content} for m in request.history]
-    try:
-        client = get_llm_client()
-        reply = client.chat(system_prompt, history, request.message)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:  # noqa: BLE001 — surface chat errors to the client
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {"reply": reply, "prompt_source": source, "model": client.name}
+app.include_router(
+    _chat_router.build_router(
+        cfg,
+        voice_messages=voice_messages,
+        existing_prompt=existing_prompt,
+        default_prompt=default_prompt,
+        regenerate_prompt=regenerate_prompt,
+        load_state=load_state,
+        save_state=save_state,
+        get_llm_client=get_llm_client,
+    )
+)
 
 
 @app.get("/api/knowledge-paths")
