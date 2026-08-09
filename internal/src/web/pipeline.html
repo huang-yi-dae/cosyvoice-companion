@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/studio.css" />
+  <script src="/static/api.js" defer></script>
+  <script src="/static/ui.js" defer></script>
   <style>
     /* ── pipeline-specific components ─────────────────────────── */
     .step-list { display: flex; flex-direction: column; gap: 8px; }
@@ -177,24 +179,10 @@
     let toastTimer = null;
 
     // ── P2 · 跨页面记住当前用户（localStorage）─────────────
-    const ACTIVE_QQ_KEY = 'cosyvoice_active_qq';
-    function restoreActiveQQ(cfgRes, list) {
-      let remembered = null;
-      try { remembered = localStorage.getItem(ACTIVE_QQ_KEY); } catch (e) {}
-      if (remembered && list.some(u => String(u.qq) === String(remembered))) return remembered;
-      return cfgRes.active_qq || (list[0] && list[0].qq) || null;
-    }
-    function persistActiveQQ(qq) {
-      try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
-      updateActiveUserChip(qq);
-    }
-    function updateActiveUserChip(qq) {
-      const chip = document.getElementById('activeUserChip');
-      if (!chip) return;
-      if (qq) { chip.textContent = '当前：QQ ' + qq; chip.hidden = false;
-        chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
-      } else { chip.hidden = true; }
-    }
+    // 活跃用户 chip / QQ 记忆已抽到 /static/ui.js（UI.*），此处保留薄封装以兼容调用点。
+    function restoreActiveQQ(cfgRes, list) { return UI.resolveActiveQQ(cfgRes.active_qq, list); }
+    function persistActiveQQ(qq) { UI.persistActiveQQ(qq); }
+    function updateActiveUserChip(qq) { UI.updateActiveUserChip(qq); }
 
     const STATE_LABEL = {
       pending: '待运行', running: '运行中', ok: '完成',
@@ -409,13 +397,8 @@
         .replace(/"/g, '&quot;');
     }
 
-    function showToast(msg, err) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = 'toast show' + (err ? ' err' : '');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
-    }
+    // showToast 已抽到 /static/ui.js（UI.toast），此处保留薄封装。
+    function showToast(msg, err) { UI.toast(msg, err); }
 
     init();
   </script>
