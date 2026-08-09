@@ -19,6 +19,11 @@ from pathlib import Path
 
 import pytest
 
+# The web layer needs FastAPI/Starlette, which the lightweight CI env does not
+# install (it only has pytest/ruff/PyYAML/python-dotenv for pure-logic tests).
+# Skip the whole module there instead of erroring at collection time.
+pytest.importorskip("fastapi")
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = REPO_ROOT / "internal" / "src"
 WEB_DIR = SRC_DIR / "web"

@@ -26,9 +26,9 @@ _SRC = Path(__file__).resolve().parents[1]
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from voicekit.cosyvoice_engine import CosyVoiceEngine
-from voicekit.dashscope_tts import DashScopeTTSProvider
-from voicekit.llm import LLMClient
+from voicekit.cosyvoice_engine import CosyVoiceEngine  # noqa: E402 (after sys.path setup)
+from voicekit.dashscope_tts import DashScopeTTSProvider  # noqa: E402
+from voicekit.llm import LLMClient  # noqa: E402
 
 # ---- lazy, single-slot engine cache -----------------------------------------
 _engines: dict = {}
