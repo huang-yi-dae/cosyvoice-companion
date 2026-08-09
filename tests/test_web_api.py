@@ -150,6 +150,26 @@ def test_cloud_voice_create_requires_api_key(client):
     assert "DASHSCOPE_API_KEY" in r.json()["detail"]
 
 
+# ---- audio files (extracted to routers/audio.py) ----------------------------
+def test_audio_404_for_missing(client):
+    r = client.get("/api/audio/does-not-exist.wav")
+    assert r.status_code == 404
+
+
+def test_save_404_for_missing_source(client):
+    r = client.post("/api/save/does-not-exist.wav")
+    assert r.status_code == 404
+
+
+def test_saved_lists_files_shape(client):
+    r = client.get("/api/saved")
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body["files"], list)  # possibly empty, but well-formed
+    for f in body["files"]:
+        assert {"filename", "size", "time"} <= set(f)
+
+
 # ---- management: messages / prompt ------------------------------------------
 def test_messages_link_voice_to_wav(client):
     r = client.get(f"/api/users/{DEMO_QQ}/messages")

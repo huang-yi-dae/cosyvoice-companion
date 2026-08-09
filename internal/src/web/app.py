@@ -11,16 +11,14 @@ import sys
 import json
 import uuid
 import hmac
-import shutil
 from pathlib import Path
-from datetime import datetime
 from typing import List, Optional
 
 # internal/src/web/app.py -> add internal/src for the voicekit package
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -410,13 +408,14 @@ async def list_voices(qq: Optional[str] = None):
     return {"voices": list_voice_files(qq)}
 
 
-@app.get("/api/voice/{voice_id:path}")
-async def get_voice_file(voice_id: str, qq: Optional[str] = None):
-    filepath = resolve_voice_path(voice_id, qq)
-    if not filepath.exists():
-        raise HTTPException(status_code=404, detail=f"Voice file not found: {filepath}")
-    media_type = "audio/wav" if filepath.suffix.lower() == ".wav" else "audio/mpeg"
-    return FileResponse(str(filepath), media_type=media_type)
+# ---- audio file serving / saving / voice-file access -------------------------
+# Extracted to routers/audio.py (architecture review §4). resolve_voice_path is
+# injected as a callable so the router doesn't import app.py's path helpers.
+from routers import audio as _audio_router  # noqa: E402
+
+app.include_router(
+    _audio_router.build_router(OUTPUT_DIR, SAVED_DIR, resolve_voice_path)
+)
 
 
 # ---- cloud voice management (DashScope enrollment, advanced) -----------------
@@ -582,36 +581,6 @@ def generate_speech_stream(request: TTSRequest):
         raise
     except Exception as e:  # noqa: BLE001 — surface synth errors to the client
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/audio/{filename}")
-async def get_audio(filename: str):
-    filepath = OUTPUT_DIR / filename
-    if not filepath.exists():
-        raise HTTPException(status_code=404, detail="Audio file not found")
-    return FileResponse(str(filepath), media_type="audio/wav")
-
-
-@app.post("/api/save/{filename}")
-async def save_audio(filename: str):
-    src = OUTPUT_DIR / filename
-    if not src.exists():
-        raise HTTPException(status_code=404, detail="Audio file not found")
-    shutil.copy2(str(src), str(SAVED_DIR / filename))
-    return {"success": True, "message": "Audio saved"}
-
-
-@app.get("/api/saved")
-async def list_saved():
-    files = []
-    for f in sorted(SAVED_DIR.glob("*.wav")):
-        stat = f.stat()
-        files.append({
-            "filename": f.name,
-            "size": stat.st_size,
-            "time": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-        })
-    return {"files": files}
 
 
 # ---- management: messages / prompt / knowledge paths -------------------------
