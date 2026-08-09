@@ -420,57 +420,11 @@ async def get_voice_file(voice_id: str, qq: Optional[str] = None):
 
 
 # ---- cloud voice management (DashScope enrollment, advanced) -----------------
-class CloudVoiceCreate(BaseModel):
-    audio_url: str
-    prefix: str = "voice"
-    language_hint: Optional[str] = None
+# Extracted to routers/cloud_voices.py (architecture review §4); depends only on
+# cfg + the get_dashscope_provider accessor, so it's a clean self-contained slice.
+from routers import cloud_voices as _cloud_voices_router  # noqa: E402
 
-
-@app.get("/api/cloud/voices")
-async def api_cloud_voices():
-    """List cloud voices: live enrollment list if reachable, else config list."""
-    if not cfg.dashscope_api_key:
-        return {"configured": False, "voices": cfg.dashscope_voices()}
-    try:
-        provider = get_dashscope_provider()
-        voices = provider.list_voices()
-        # Fall back to configured voices if the account has none enrolled yet.
-        if not voices:
-            voices = cfg.dashscope_voices()
-        return {"configured": True, "voices": voices}
-    except Exception as e:  # noqa: BLE001 — degrade to configured voices
-        return {"configured": True, "voices": cfg.dashscope_voices(),
-                "error": str(e)}
-
-
-@app.post("/api/cloud/voices")
-async def api_cloud_create_voice(body: CloudVoiceCreate):
-    if not cfg.dashscope_api_key:
-        raise HTTPException(status_code=400, detail="未配置 DASHSCOPE_API_KEY")
-    try:
-        provider = get_dashscope_provider()
-        voice_id = provider.create_voice(
-            body.audio_url, body.prefix, body.language_hint,
-        )
-        return {"success": True, "voice_id": voice_id}
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.delete("/api/cloud/voices/{voice_id}")
-async def api_cloud_delete_voice(voice_id: str):
-    if not cfg.dashscope_api_key:
-        raise HTTPException(status_code=400, detail="未配置 DASHSCOPE_API_KEY")
-    try:
-        provider = get_dashscope_provider()
-        provider.delete_voice(voice_id)
-        return {"success": True}
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=str(e))
+app.include_router(_cloud_voices_router.build_router(cfg, get_dashscope_provider))
 
 
 # ---- generation (sync -> runs in threadpool; model load is heavy) ------------

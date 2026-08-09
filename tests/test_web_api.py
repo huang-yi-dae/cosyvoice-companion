@@ -41,6 +41,7 @@ def client():
 
     os.environ["ACTIVE_QQ"] = DEMO_QQ
     os.environ.pop("WEB_AUTH_TOKEN", None)  # ensure auth is disabled for tests
+    os.environ.pop("DASHSCOPE_API_KEY", None)  # cloud-voice tests assume unconfigured
 
     # Generate hermetic demo data (idempotent; only touches demo QQs).
     seed = importlib.import_module("scripts.seed_demo_data")
@@ -126,6 +127,22 @@ def test_voice_file_streams_wav(client):
 def test_voice_file_404_for_missing(client):
     r = client.get("/api/voice/原始语音:does-not-exist.wav", params={"qq": DEMO_QQ})
     assert r.status_code == 404
+
+
+# ---- cloud voices (extracted to routers/cloud_voices.py) --------------------
+def test_cloud_voices_unconfigured_without_api_key(client):
+    """No DASHSCOPE_API_KEY in the test env → degrade to the configured list."""
+    r = client.get("/api/cloud/voices")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["configured"] is False
+    assert "voices" in body  # configured fallback list (possibly empty)
+
+
+def test_cloud_voice_create_requires_api_key(client):
+    r = client.post("/api/cloud/voices", json={"audio_url": "http://x/a.wav"})
+    assert r.status_code == 400
+    assert "DASHSCOPE_API_KEY" in r.json()["detail"]
 
 
 # ---- management: messages / prompt ------------------------------------------
