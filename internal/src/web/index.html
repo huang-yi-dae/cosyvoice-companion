@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/studio.css" />
+  <script src="/static/api.js" defer></script>
+  <script src="/static/ui.js" defer></script>
   <style>
     .result-audio-wrap {
       background: var(--surface-3);
@@ -198,24 +200,10 @@
 
   <script>
     // ── P2 · 跨页面记住当前用户（localStorage）─────────────
-    const ACTIVE_QQ_KEY = 'cosyvoice_active_qq';
-    function restoreActiveQQ(cfgRes, list) {
-      let remembered = null;
-      try { remembered = localStorage.getItem(ACTIVE_QQ_KEY); } catch (e) {}
-      if (remembered && list.some(u => String(u.qq) === String(remembered))) return remembered;
-      return cfgRes.active_qq || (list[0] && list[0].qq) || null;
-    }
-    function persistActiveQQ(qq) {
-      try { if (qq) localStorage.setItem(ACTIVE_QQ_KEY, String(qq)); } catch (e) {}
-      updateActiveUserChip(qq);
-    }
-    function updateActiveUserChip(qq) {
-      const chip = document.getElementById('activeUserChip');
-      if (!chip) return;
-      if (qq) { chip.textContent = '当前：QQ ' + qq; chip.hidden = false;
-        chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
-      } else { chip.hidden = true; }
-    }
+    // 活跃用户 chip / QQ 记忆已抽到 /static/ui.js（UI.*），此处保留薄封装以兼容调用点。
+    function restoreActiveQQ(cfgRes, list) { return UI.resolveActiveQQ(cfgRes.active_qq, list); }
+    function persistActiveQQ(qq) { UI.persistActiveQQ(qq); }
+    function updateActiveUserChip(qq) { UI.updateActiveUserChip(qq); }
     // ── 首次使用引导 ──────────────────────────────────────
     const ONBOARD_DISMISS_KEY = 'cosyvoice_onboard_dismissed';
     function dismissOnboard() {
@@ -575,21 +563,8 @@
       if (vuText) vuText.textContent = '正在合成，首次加载模型约需 1 分钟…';
     }
 
-    // 把常见后端错误归类为「原因 + 可操作建议」
-    function friendlyError(msg, isCloud) {
-      const m = String(msg || '');
-      if (/模型|model|未下载|not found|checkpoint/i.test(m))
-        return '合成失败：模型可能未下载或加载失败。请到「模型」页确认已下载所选模型。';
-      if (/样本|voice|参考音频|reference|prompt.*wav/i.test(m))
-        return '合成失败：语音样本无效或缺失。请换其它样本，或到「自动化」重新生成克隆样本。';
-      if (/api.?key|dashscope|云端|unauthorized|401/i.test(m))
-        return '合成失败：云端音色需要在 .env 配置 DASHSCOPE_API_KEY 后重试。';
-      if (/timeout|超时|time.?out/i.test(m))
-        return '合成失败：首次加载模型较慢导致超时，请稍候重试（本地模型加载约 1 分钟）。';
-      if (/显存|cuda|out of memory|oom/i.test(m))
-        return '合成失败：显存不足。可尝试更小的模型或缩短文本。';
-      return '合成失败：' + (m || '未知错误') + (isCloud ? '' : '（可到「模型」页确认模型状态）');
-    }
+    // friendlyError 已抽到 /static/api.js（API.friendlyError），此处保留薄封装。
+    function friendlyError(msg, isCloud) { return API.friendlyError(msg, isCloud); }
 
     async function generateSpeech() {
       const text = document.getElementById('textInput').value.trim();
@@ -681,14 +656,8 @@
       el.textContent = msg;
       el.className = 'status show ' + type;
     }
-    let toastTimer = null;
-    function showToast(msg, err) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = 'toast show' + (err ? ' err' : '');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2600);
-    }
+    // showToast 已抽到 /static/ui.js（UI.toast），此处保留薄封装。
+    function showToast(msg, err) { UI.toast(msg, err); }
 
     // 快捷键：在文本框内 Ctrl/Cmd + Enter 触发合成
     document.getElementById('textInput').addEventListener('keydown', (e) => {
