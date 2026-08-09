@@ -119,7 +119,8 @@ Web 前端采用 **Glass Studio** 设计语言：深色底 + 磨砂玻璃面板 
   "🔊 点击播放语音"，点击即可手动播放，不再静默失败。
 
 > 设计与体验相关文档见 [`docs/PRD.md`](docs/PRD.md)（产品需求）与
-> [`docs/UX-REVIEW.md`](docs/UX-REVIEW.md)（UI 设计师视角的流程审查）。
+> [`docs/UX-REVIEW.md`](docs/UX-REVIEW.md)（UI 设计师视角的流程审查）；
+> 系统结构（数据流图 + 模块职责）见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
 
 ### 合成语言选择
 
