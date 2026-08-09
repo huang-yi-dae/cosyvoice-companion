@@ -312,6 +312,49 @@ class TTSRequest(BaseModel):
     voice: Optional[str] = None
 
 
+# ---- response models (API contract + auto OpenAPI docs at /docs; review P1) --
+# extra="allow" keeps them documentation-first without rejecting current shapes.
+from pydantic import ConfigDict  # noqa: E402
+
+
+class VoiceItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: str
+    name: str
+    category: str
+    duration: float
+
+
+class VoicesResponse(BaseModel):
+    voices: List[VoiceItem]
+
+
+class UserItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    qq: str
+    voice_count: int
+    cloned_count: int
+    has_chat_log: bool
+    is_active: bool
+
+
+class UsersResponse(BaseModel):
+    users: List[UserItem]
+
+
+class ModelItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    name: str
+    available: bool
+    is_default: bool
+
+
+class ModelsResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    models: List[ModelItem]
+    default: str
+
+
 class PromptBody(BaseModel):
     content: str
 
@@ -370,18 +413,18 @@ async def get_config():
     }
 
 
-@app.get("/api/users")
+@app.get("/api/users", response_model=UsersResponse)
 async def api_users():
     return {"users": cfg.list_users()}
 
 
-@app.get("/api/models")
+@app.get("/api/models", response_model=ModelsResponse)
 async def api_models():
     return {"models": cfg.list_models(), "default": cfg.model_dir.name}
 
 
 # ---- voices ------------------------------------------------------------------
-@app.get("/api/voices")
+@app.get("/api/voices", response_model=VoicesResponse)
 async def list_voices(qq: Optional[str] = None):
     return {"voices": list_voice_files(qq)}
 
